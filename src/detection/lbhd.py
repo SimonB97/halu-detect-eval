@@ -23,6 +23,7 @@ class LBHD:
         response_scores = {}
 
         for sentence in sentences:
+            print(f"Processing sentence: {sentence}")
             key_concepts = self.identify_concepts(self.llm, sentence)
             concept_probabilities = self.get_concept_probabilities(key_concepts, response)
 
@@ -102,17 +103,22 @@ class LBHD:
         tokens, _, probabilities, _ = response
         concept_probabilities = {}
 
+        # Preprocess the concepts to match the tokenization format
+        concepts = [concept.replace(' ', '').replace('.', '').replace(',', '') for concept in concepts]
+
         for concept in concepts:
-            # concept = concept.strip()  # Remove leading and trailing whitespace
             concept_tokens = []
             concept_probs = []
 
-            # Find the sequence of tokens that matches the concept
+            # Find all possible sequences of tokens that match the concept
             for i in range(len(tokens)):
-                if ''.join(tokens[i:i+len(concept.split())]) == concept:
-                    concept_tokens = tokens[i:i+len(concept.split())]
-                    concept_probs = probabilities[i:i+len(concept.split())]
-                    break
+                for j in range(i, len(tokens)):
+                    sequence = ''.join(token.strip().replace('.', '').replace(',', '') for token in tokens[i:j+1])
+                    # print(f"Comparing '{concept}' with '{sequence}'")
+                    if sequence == concept:
+                        concept_tokens = tokens[i:j+1]
+                        concept_probs = probabilities[i:j+1]
+                        # print(f"Matched: {concept} -> {dict(zip(concept_tokens, concept_probs))}")
 
             if concept_tokens:
                 concept_probabilities[concept] = dict(zip(concept_tokens, concept_probs))
