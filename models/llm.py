@@ -25,6 +25,24 @@ def get_response(
         n: int = 1,
         logprobs: int = 0
 ) -> requests.Response:
+    """
+    Sends a message to a language model API and returns the response.
+
+    Args:
+        message (str): The message to send to the language model.
+        model (str): The name of the language model to use.
+        max_tokens (int, optional): The maximum number of tokens in the response. Defaults to 512.
+        temperature (float, optional): The temperature value for generating the response. Defaults to 0.0.
+        top_p (float, optional): The top-p value for generating the response. Defaults to 1.
+        top_k (int, optional): The top-k value for generating the response. Defaults to 40.
+        repetition_penalty (float, optional): The repetition penalty value for generating the response. Defaults to 1.
+        n (int, optional): The number of responses to generate. Defaults to 1.
+        logprobs (int, optional): Whether to include log probabilities in the response. Defaults to 0.
+
+    Returns:
+        tokens (list[str]): The tokens in the response.
+        logprobs (list[float]): The log probabilities of the tokens in the response. If logprobs is 0, returns tokens only.
+    """
     payload = {
         "model": model,
         "max_tokens": max_tokens,
@@ -40,13 +58,13 @@ def get_response(
                 "role": "user",
                 "content": message
             }
-    ]
+        ]
     }
 
     headers = {
-    "accept": "application/json",
-    "content-type": "application/json",
-    "Authorization": bearer_token
+        "accept": "application/json",
+        "content-type": "application/json",
+        "Authorization": bearer_token
     }
 
     response = requests.post(url, json=payload, headers=headers)
