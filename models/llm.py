@@ -2,7 +2,7 @@ import os
 import requests
 from dotenv import load_dotenv
 from abc import ABC, abstractmethod
-from openai import OpenAI
+# from openai import OpenAI
 import numpy as np
 
 load_dotenv()
@@ -22,10 +22,12 @@ class BaseLlm(ABC):
 
 
 class TogetherAILlm(BaseLlm):
+    def __init__(self, bearer_token: str, model: str, url: str = None):
+        super().__init__(bearer_token, model, url if url else "https://api.together.xyz/v1/chat/completions")
+
     def get_response(self, message: str, system_message: str = None, max_tokens: int = 512,
                      temperature: float = 0.0, top_p: float = 1, repetition_penalty: float = 1, 
                      n: int = 1, return_logprobs: bool = False) -> tuple:
-        url =  self.url if self.url else "https://api.together.xyz/v1/chat/completions"
 
         messages = [
             {"role": "user", "content": message}
@@ -54,27 +56,32 @@ class TogetherAILlm(BaseLlm):
             "Authorization": self.bearer_token
         }
 
-        response = requests.post(url, json=payload, headers=headers)
+        response = requests.post(self.url, json=payload, headers=headers)
         tokens = response.json()["choices"][0]["logprobs"]["tokens"]
-        linear_probabilities = response.json()["choices"][0]["logprobs"]["token_logprobs"] if return_logprobs else None
+        linear_probabilities = np.array(response.json()["choices"][0]["logprobs"]["token_logprobs"], dtype=np.float64) if return_logprobs else None
 
         if return_logprobs:
             # rescale linear probabilities from -1 to 1 to 0 to 1 (based on assumption for scale of linear probabilities)
             rescaled_linear_probabilities = [(prob + 1) / 2 for prob in linear_probabilities]
-            logprobs = [np.log(prob) for prob in rescaled_linear_probabilities]
+            logprobs = np.array([np.log(prob) for prob in rescaled_linear_probabilities], dtype=np.float64)
         else:
             logprobs = None
 
         # TODO: Not sure on which scale originally returned logprobs are!!! (seems to be 1 (highest) to -1 (lowest) but not sure)
+            
+        full_text = ("".join(tokens))
 
-        return tokens, logprobs, linear_probabilities
+        if return_logprobs:
+            return tokens, logprobs, linear_probabilities, full_text
 
 
 class OpenAILlm(BaseLlm):
+    def __init__(self, bearer_token: str, model: str, url: str = None):
+        super().__init__(bearer_token, model, url if url else "https://api.openai.com/v1/chat/completions")
+
     def get_response(self, message: str, system_message: str = None, max_tokens: int = 512,
                      temperature: float = 0.0, top_p: float = 1, repetition_penalty: float = 1, 
                      n: int = 1, return_logprobs: bool = False) -> tuple:
-        url =  "https://api.openai.com/v1" if self.url is None else self.url
         
         messages = [
             {"role": "user", "content": message}
@@ -84,7 +91,7 @@ class OpenAILlm(BaseLlm):
                             {"role": "system", "content": system_message}
             )
 
-        # using requests
+        # v1: using requests
         payload = {
             "model": self.model,
             "max_tokens": max_tokens,
@@ -101,10 +108,10 @@ class OpenAILlm(BaseLlm):
             "Content-Type": "application/json",
             "Authorization": "Bearer " + self.bearer_token
         }
-        response = requests.post(url + "/chat/completions", json=payload, headers=headers)
+        response = requests.post(self.url, json=payload, headers=headers)
 
-        # # using openai python sdk
-        # client = OpenAI(api_key=self.bearer_token, base_url=url)
+        # # v2: using openai python sdk
+        # client = OpenAI(api_key=self.bearer_token, base_url=url.split("/v1")[0])
         # response = client.chat.completions.create(
         #     model=self.model,
         #     messages=messages,
@@ -118,17 +125,20 @@ class OpenAILlm(BaseLlm):
         # )
 
         contents = response.json()["choices"][0]["logprobs"]["content"]
-        tokens, logprobs = zip(*((content["token"], content["logprob"] if return_logprobs else None) for content in contents))
+        tokens, logprobs = zip(*((content["token"], np.float64(content["logprob"]) if return_logprobs else None) for content in contents))
         tokens = list(tokens)
         logprobs = list(logprobs)
-
+        
         # Convert logprobs to linear probabilities
         if return_logprobs:
             linear_probabilities = [np.float64(np.round(np.exp(logprob),2)) for logprob in logprobs]
         else:
             linear_probabilities = None
 
-        return tokens, logprobs, linear_probabilities
+        full_text = ("".join(tokens))
+
+        return tokens, logprobs, linear_probabilities, full_text
+
 
 
 if __name__ == "__main__":
@@ -140,11 +150,13 @@ if __name__ == "__main__":
 
     llm = OpenAILlm(openai_api_key, "gpt-3.5-turbo")
     oai_response = llm.get_response(message, return_logprobs=True, max_tokens=8)
-    print("OpenAI response:\n- Tokens:", oai_response[0], "\n- Logprobs:", oai_response[1], "\n- Linear probabilities:", oai_response[2])
+    print("OpenAI response:\n- Tokens:", oai_response[0], "\n- Logprobs:", oai_response[1], "\n- Linear probabilities:", oai_response[2], "\n- Full text:", oai_response[3])
+    print(f"- Types: Logprobs: {type(oai_response[1][0])}, Linear probabilities: {type(oai_response[2][0])}")
     
     llm = TogetherAILlm(together_bearer_token, "mistralai/Mixtral-8x7B-Instruct-v0.1")
     together_response = llm.get_response(message, return_logprobs=1, max_tokens=8)
-    print("TogetherAI response:\n- Tokens:", together_response[0], "\n- Logprobs:", together_response[1], "\n- Linear probabilities:", together_response[2])
+    print("TogetherAI response:\n- Tokens:", together_response[0], "\n- Logprobs:", together_response[1], "\n- Linear probabilities:", together_response[2], "\n- Full text:", together_response[3])
+    print(f"- Types: Logprobs: {type(together_response[1][0])}, Linear probabilities: {type(together_response[2][0])}")
 
     # Plot linear probabilities and logprobs per token curve
     import matplotlib.pyplot as plt
@@ -181,4 +193,4 @@ if __name__ == "__main__":
     ax[1, 1].set_xticklabels(tokens_together, fontsize='small')
     ax[1, 1].set_ylabel("Linear probability")
 
-    plt.show()
+    # plt.show()

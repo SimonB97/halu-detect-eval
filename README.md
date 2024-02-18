@@ -23,3 +23,9 @@ project/
 │
 └── main.py               # Main script to run the evaluation
 ```
+
+## Notes regarding method implementatios
+
+- **LBHD**:
+    - using "Instructing the Model" method to identify key concepts (for now), as no extra tool needed
+
