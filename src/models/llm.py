@@ -100,9 +100,11 @@ class OpenAILlm(BaseLlm):
             "frequency_penalty": repetition_penalty,
             "n": n,
             "logprobs": return_logprobs,
-            "top_logprobs": 1 if return_logprobs else 0,
             "messages": messages
         }
+        if return_logprobs:
+            payload["top_logprobs"] = 1
+
         headers = {
             # "accept": "application/json",
             "Content-Type": "application/json",
@@ -124,18 +126,18 @@ class OpenAILlm(BaseLlm):
         #     top_logprobs=1 if return_logprobs else 0
         # )
 
-        contents = response.json()["choices"][0]["logprobs"]["content"]
-        tokens, logprobs = zip(*((content["token"], np.float64(content["logprob"]) if return_logprobs else None) for content in contents))
-        tokens = list(tokens)
-        logprobs = list(logprobs)
-        
-        # Convert logprobs to linear probabilities
         if return_logprobs:
+            contents = response.json()["choices"][0]["logprobs"]["content"]
+            tokens, logprobs = zip(*((content["token"], np.float64(content["logprob"]) if return_logprobs else None) for content in contents))
+            tokens = list(tokens)
+            logprobs = list(logprobs)
             linear_probabilities = [np.float64(np.exp(logprob)) for logprob in logprobs]
+            full_text = ("".join(tokens))
         else:
+            full_text = response.json()["choices"][0]["message"]["content"]
+            tokens = None
+            logprobs = None
             linear_probabilities = None
-
-        full_text = ("".join(tokens))
 
         return tokens, logprobs, linear_probabilities, full_text
 

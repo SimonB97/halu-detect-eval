@@ -1,58 +1,69 @@
 """Logit-based Hallucination Detection (LBHD) method."""
 
-from models.llm import BaseLlm
+from src.models.llm import BaseLlm
 import numpy as np
+import re
 
 class LBHD:
     def __init__(self, llm: BaseLlm):
         self.llm = llm
         self.possible_variants = ["avg", "normalized_product", "min"]
 
-    def get_hallucination_score(self, response, variants: list[str] = None) -> float:
-        """Get response and hallucination score.
+    def get_hallucination_score(self, response, variants: list[str] = None) -> dict:
+        """Calculate hallucination score(s) for each sentence in the response.
 
         Args:
-            response (tuple): The response tuple containing tokens, attentions, probabilities, and other information.
-            variants (list[str], optional): The list of variants to calculate the hallucination score. Defaults to None.
+            response (tuple): The response tuple containing tokens, logprobs, linear probabilities, and the complete response string.
+            variants (list[str], optional): The list of variants to calculate the hallucination score for. Defaults to None, which uses all possible variants.
 
         Returns:
-            float: The hallucination score.
-
-        Raises:
-            ValueError: If an invalid variant is provided.
-
+            dict: A dictionary with sentences as keys and their hallucination scores as values.
         """
-        
+        sentences = self.split_into_sentences(response[-1])
+        response_scores = {}
 
-        key_concepts = self.identify_concepts(self.llm, response[-1])
-        print(f"DEBUG: key_concepts: {key_concepts}")
+        for sentence in sentences:
+            key_concepts = self.identify_concepts(self.llm, sentence)
+            concept_probabilities = self.get_concept_probabilities(key_concepts, response)
 
-        concept_probabilities = self.get_concept_probabilities(key_concepts, response)
+            variants = variants if variants else self.possible_variants
+            scores_for_sentence = []
 
-        variants = variants if variants else self.possible_variants
+            for concept, probabilities in concept_probabilities.items():
+                scores = []
+                for variant in variants:
+                    if variant not in self.possible_variants:
+                        raise ValueError(f"Variant {variant} not in {self.possible_variants}")
+                    if variant == "avg":
+                        score = np.mean(list(probabilities.values()))
+                        # print(f"DEBUG 0: {concept} - {variant} - {score} - {probabilities}")
+                    elif variant == "normalized_product":
+                        score = self.normalized_product(probabilities)
+                        # print(f"DEBUG 1: {concept} - {variant} - {score} - {probabilities}")
+                    elif variant == "min":
+                        score = np.min(list(probabilities.values()))
+                        # print(f"DEBUG 2: {concept} - {variant} - {score} - {probabilities}")
+                    scores.append({variant: score})
+                
+                scores_for_sentence.append({concept: scores})
 
-        for concept, probability in concept_probabilities.items():
-            scores = []
-            for variant in variants:
-                if variant not in self.possible_variants:
-                    raise ValueError(f"Variant {variant} not in {self.possible_variants}")
-                if variant == "avg":
-                    score = np.mean(list(probability.values()))
-                elif variant == "normalized_product":
-                    # Ensure that we have no zero probabilities, as log(0) is undefined
-                    adjusted_probs = [max(p, 1e-30) for p in probability.values()]
-                    # Take the log of the probabilities to make multiplication a summation
-                    log_probs = np.log(adjusted_probs)
-                    # Sum the log probabilities and normalize
-                    sum_log_probs = np.sum(log_probs)
-                    # Exponentiate the average log probability to get the geometric mean
-                    score = np.exp(sum_log_probs / len(adjusted_probs))
-                elif variant == "min":
-                    score = np.min(list(probability.values()))
-                scores.append({variant: score})
-            
-            return 
+            response_scores[sentence] = scores_for_sentence
 
+        return response_scores
+
+    def normalized_product(self, probabilities):
+        adjusted_probs = [max(p, 1e-30) for p in probabilities.values()]
+        log_probs = np.log(adjusted_probs)
+        score = np.exp(np.sum(log_probs) / len(adjusted_probs))
+        return score
+
+    @staticmethod
+    def split_into_sentences(text: str) -> list:
+        """Split text into sentences using simple punctuation marks."""
+        sentences = re.split(r'(?<=[.!?]) +', text)
+        return sentences
+
+    @staticmethod
     def identify_concepts(llm: BaseLlm, statement: str) -> list[str]:
         """Identify key concepts in statement.
 
@@ -65,8 +76,8 @@ class LBHD:
 
         """
         prompt = f"{statement}\n\nIdentify all the important keyphrases from the above sentence and return a comma separated list. Use the format: [keyphrase1, keyphrase2, keyphrase3, ...]"
-        response = llm.get_response(prompt.format(statement=statement))[-1]
-        print(f"DEBUG: response: {response}")
+        prompt = prompt.format(statement=statement)
+        response = llm.get_response(prompt)[-1]
 
         # Remove brackets and any leading or trailing whitespace
         try:
@@ -98,7 +109,7 @@ class LBHD:
 
             # Find the sequence of tokens that matches the concept
             for i in range(len(tokens)):
-                if ' '.join(tokens[i:i+len(concept.split())]) == concept:
+                if ''.join(tokens[i:i+len(concept.split())]) == concept:
                     concept_tokens = tokens[i:i+len(concept.split())]
                     concept_probs = probabilities[i:i+len(concept.split())]
                     break
