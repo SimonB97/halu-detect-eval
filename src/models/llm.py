@@ -131,7 +131,7 @@ class OpenAILlm(BaseLlm):
         
         # Convert logprobs to linear probabilities
         if return_logprobs:
-            linear_probabilities = [np.float64(np.round(np.exp(logprob),2)) for logprob in logprobs]
+            linear_probabilities = [np.float64(np.exp(logprob)) for logprob in logprobs]
         else:
             linear_probabilities = None
 
