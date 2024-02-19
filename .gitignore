@@ -1,2 +1,5 @@
 .env
 scratch_pad.py
+
+# exclude any __pycache__ directories
+__pycache__/
