@@ -19,6 +19,7 @@ class LBHD:
         Returns:
             dict: A dictionary with sentences as keys and their hallucination scores as values.
         """
+        print(f"DEBUG: Response response:\n- Tokens:", response[0], "\n- Logprobs:", response[1], "\n- Linear probabilities:", response[2], "\n- Full text:", response[3])
         sentences = self.split_into_sentences(response[-1])
         response_scores = {}
 
@@ -28,29 +29,35 @@ class LBHD:
             concept_probabilities = self.get_token_probabilities(key_concepts, response)
 
             variants = variants if variants else self.possible_variants
-            scores_for_sentence = []
+            scores_per_concept = []
 
             for concept, probabilities in concept_probabilities.items():
-                scores = []
-                for variant in variants:
-                    if variant not in self.possible_variants:
-                        raise ValueError(f"Variant {variant} not in {self.possible_variants}")
-                    if variant == "avg":
-                        score = np.mean(list(probabilities.values()))
-                    elif variant == "normalized_product":
-                        score = self.normalized_product(probabilities)
-                    elif variant == "min":
-                        score = np.min(list(probabilities.values()))
-                    scores.append({variant: score})
+                scores = self.get_substring_score(variants, probabilities)
                 
-                scores_for_sentence.append({concept: scores})
+                scores_per_concept.append({concept: scores})
 
-            # calculate scores for all tokens in the sentence
+            sentence_probabilities = self.get_token_probabilities([sentence], response)
+            sentence_scores = self.get_substring_score(variants, sentence_probabilities[sentence.strip().replace('.', '')])
+
+            print(f"Scores for sentence: {sentence_scores}")
             
-
-            response_scores[sentence] = scores_for_sentence
+            response_scores[sentence] = dict(sentence_scores, **{"concepts": scores_per_concept})
 
         return response_scores
+    
+    def get_substring_score(self, variants, probabilities):
+        scores = {}
+        for variant in variants:
+            if variant not in self.possible_variants:
+                raise ValueError(f"Variant {variant} not in {self.possible_variants}")
+            if variant == "avg":
+                score = np.mean(list(probabilities.values()))
+            elif variant == "normalized_product":
+                score = self.normalized_product(probabilities)
+            elif variant == "min":
+                score = np.min(list(probabilities.values()))
+            scores[variant] = score
+        return scores
 
     def normalized_product(self, probabilities):
         adjusted_probs = [max(p, 1e-30) for p in probabilities.values()]
