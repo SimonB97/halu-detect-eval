@@ -33,13 +33,10 @@ class LBHD:
 
             for concept, probabilities in concept_probabilities.items():
                 scores = self.get_substring_score(variants, probabilities)
-                
                 scores_per_concept.append({concept: scores})
 
             sentence_probabilities = self.get_token_probabilities([sentence], response)
             sentence_scores = self.get_substring_score(variants, sentence_probabilities[sentence.strip().replace('.', '')])
-
-            print(f"Scores for sentence: {sentence_scores}")
             
             response_scores[sentence] = dict(sentence_scores, **{"concepts": scores_per_concept})
 

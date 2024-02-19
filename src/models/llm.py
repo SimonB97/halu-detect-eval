@@ -158,6 +158,7 @@ if __name__ == "__main__":
     oai_response = llm.get_response(message, return_logprobs=True, max_tokens=8)
     print("OpenAI response:\n- Tokens:", oai_response[0], "\n- Logprobs:", oai_response[1], "\n- Linear probabilities:", oai_response[2], "\n- Full text:", oai_response[3])
     print(f"- Types: Logprobs: {type(oai_response[1][0])}, Linear probabilities: {type(oai_response[2][0])}")
+    print()
     
     llm = TogetherAILlm(together_bearer_token, "mistralai/Mixtral-8x7B-Instruct-v0.1")
     together_response = llm.get_response(message, return_logprobs=1, max_tokens=8)
