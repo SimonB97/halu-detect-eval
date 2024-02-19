@@ -33,5 +33,5 @@ project/
 
 - **LM sv LM**:
     - prompts and inspiration from [github.com/maybenotime/PHD/LMvsLM_replicate](https://github.com/maybenotime/PHD/tree/main/LMvsLM_replicate)
-    - 0 = true statement, 1 = hallucination
+    - 0 = true statement, 1 = hallucination, -1 = no decision made
     - currently hardcoded max turns to 5, as in original paper

@@ -109,5 +109,7 @@ class LMvLM:
         print(f"DEBUG: Examiner history:\n{examiner_history}")
         if 'incorrect' in examiner_history[-1]['content']:
             return 1
-        else:
+        elif 'correct' in examiner_history[-1]['content']:
             return 0
+        else:
+            return -1
