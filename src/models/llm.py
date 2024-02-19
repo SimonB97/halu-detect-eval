@@ -55,24 +55,28 @@ class TogetherAILlm(BaseLlm):
             "content-type": "application/json",
             "Authorization": self.bearer_token
         }
-
+        
         response = requests.post(self.url, json=payload, headers=headers)
-        tokens = response.json()["choices"][0]["logprobs"]["tokens"]
-        linear_probabilities = np.array(response.json()["choices"][0]["logprobs"]["token_logprobs"], dtype=np.float64) if return_logprobs else None
 
         if return_logprobs:
+            tokens = response.json()["choices"][0]["logprobs"]["tokens"]
+            linear_probabilities = np.array(response.json()["choices"][0]["logprobs"]["token_logprobs"], dtype=np.float64) if return_logprobs else None
+
             # rescale linear probabilities from -1 to 1 to 0 to 1 (based on assumption for scale of linear probabilities)
             rescaled_linear_probabilities = [(prob + 1) / 2 for prob in linear_probabilities]
             logprobs = np.array([np.log(prob) for prob in rescaled_linear_probabilities], dtype=np.float64)
+            full_text = ("".join(tokens))
         else:
+            full_text = response.json()["choices"][0]["message"]["content"]
+            tokens = None
             logprobs = None
+            linear_probabilities = None
 
+        return tokens, logprobs, linear_probabilities, full_text
         # TODO: Not sure on which scale originally returned logprobs are!!! (seems to be 1 (highest) to -1 (lowest) but not sure)
             
-        full_text = ("".join(tokens))
-
-        if return_logprobs:
-            return tokens, logprobs, linear_probabilities, full_text
+        
+            
 
 
 class OpenAILlm(BaseLlm):

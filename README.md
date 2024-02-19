@@ -29,4 +29,5 @@ project/
 - **LBHD**:
     - using "Instructing the Model" method to identify key concepts (for now), as no extra tool needed
     - not clear how the authors aggregated concept scores into sentence scores -> using same strategy for aggregation to sentence scores as for concept scores
+    - using same llm for concept extraction as for response generation, to simulate real-world scenario
 

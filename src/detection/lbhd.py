@@ -19,7 +19,7 @@ class LBHD:
         Returns:
             dict: A dictionary with sentences as keys and their hallucination scores as values.
         """
-        print(f"DEBUG: Response response:\n- Tokens:", response[0], "\n- Logprobs:", response[1], "\n- Linear probabilities:", response[2], "\n- Full text:", response[3])
+        # print(f"DEBUG: Response response:\n- Tokens:", response[0], "\n- Logprobs:", response[1], "\n- Linear probabilities:", response[2], "\n- Full text:", response[3])
         sentences = self.split_into_sentences(response[-1])
         response_scores = {}
 
@@ -83,9 +83,10 @@ class LBHD:
             list[str]: The list of identified key concepts.
 
         """
-        prompt = f"{statement}\n\nIdentify all the important keyphrases from the above sentence and return a comma separated list. Use the format: [keyphrase1, keyphrase2, keyphrase3, ...]"
+        prompt = f"{statement}\n\nIdentify all the important keyphrases from the above sentence and return a comma separated list, using only contingous exact wordings existing in the text.  Use this exact format (including square brackets):\n\n[keyphrase1, keyphrase2, keyphrase3, ...]"
+        system_message = "You are an expert in following guidelines for structuring text and identifying key concepts. Identify the key concepts in the given text."
         prompt = prompt.format(statement=statement)
-        response = llm.get_response(prompt)[-1]
+        response = llm.get_response(prompt, system_message)[-1]
 
         # Remove brackets and any leading or trailing whitespace
         try:
