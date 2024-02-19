@@ -25,7 +25,7 @@ class LBHD:
         for sentence in sentences:
             print(f"Processing sentence: {sentence}")
             key_concepts = self.identify_concepts(self.llm, sentence)
-            concept_probabilities = self.get_concept_probabilities(key_concepts, response)
+            concept_probabilities = self.get_token_probabilities(key_concepts, response)
 
             variants = variants if variants else self.possible_variants
             scores_for_sentence = []
@@ -37,16 +37,16 @@ class LBHD:
                         raise ValueError(f"Variant {variant} not in {self.possible_variants}")
                     if variant == "avg":
                         score = np.mean(list(probabilities.values()))
-                        # print(f"DEBUG 0: {concept} - {variant} - {score} - {probabilities}")
                     elif variant == "normalized_product":
                         score = self.normalized_product(probabilities)
-                        # print(f"DEBUG 1: {concept} - {variant} - {score} - {probabilities}")
                     elif variant == "min":
                         score = np.min(list(probabilities.values()))
-                        # print(f"DEBUG 2: {concept} - {variant} - {score} - {probabilities}")
                     scores.append({variant: score})
                 
                 scores_for_sentence.append({concept: scores})
+
+            # calculate scores for all tokens in the sentence
+            
 
             response_scores[sentence] = scores_for_sentence
 
@@ -89,40 +89,45 @@ class LBHD:
 
         return response.split(",")
 
-    def get_concept_probabilities(self, concepts: list[str], response: tuple) -> dict:
-        """Map each concept to its tokens and their corresponding probabilities.
+
+    def get_token_probabilities(self, token_strings: list[str], response: tuple) -> dict:
+        """Map each string (a token-collection, in order and contigous) to its tokens and their corresponding probabilities.
 
         Args:
-            concepts (list[str]): The list of concepts to map.
+            token_strings (list[str]): The list of token-collections to map.
             response (tuple): The response tuple containing tokens, attentions, probabilities, and other information.
 
         Returns:
-            dict: The dictionary mapping each concept to its tokens and probabilities.
+            dict: The dictionary mapping each string to its tokens and probabilities.
 
         """
         tokens, _, probabilities, _ = response
-        concept_probabilities = {}
+        string_probabilities = {}
 
         # Preprocess the concepts to match the tokenization format
-        concepts = [concept.replace(' ', '').replace('.', '').replace(',', '') for concept in concepts]
+        token_strings = [string.replace(' ', '').replace('.', '').replace(',', '') for string in token_strings]
 
-        for concept in concepts:
-            concept_tokens = []
-            concept_probs = []
+        for string in token_strings:
+            string_tokens = []
+            string_probs = []
 
-            # Find all possible sequences of tokens that match the concept
+            # Find all possible sequences of tokens that match the string
             for i in range(len(tokens)):
                 for j in range(i, len(tokens)):
                     sequence = ''.join(token.strip().replace('.', '').replace(',', '') for token in tokens[i:j+1])
-                    # print(f"Comparing '{concept}' with '{sequence}'")
-                    if sequence == concept:
-                        concept_tokens = tokens[i:j+1]
-                        concept_probs = probabilities[i:j+1]
-                        # print(f"Matched: {concept} -> {dict(zip(concept_tokens, concept_probs))}")
+                    # print(f"Comparing '{string}' with '{sequence}'")
+                    if sequence == string:
+                        string_tokens = tokens[i:j+1]
+                        string_probs = probabilities[i:j+1]
+                        # print(f"Matched: {string} -> {dict(zip(string_tokens, string_probs))}")
 
-            if concept_tokens:
-                concept_probabilities[concept] = dict(zip(concept_tokens, concept_probs))
+            if string_tokens:
+                # concatenate the tokens to form the string back together
+                # print(f"DEBUG: Tokens: {tokens}")
+                # print(f"DEBUG: Concept tokens: {string_tokens}")
+                string = ''.join(string_tokens).strip().replace('.', '')
+                string_probabilities[string] = dict(zip(string_tokens, string_probs))
             else:
-                print(f"Warning: Concept '{concept}' not found in response tokens.")
+                print(f"Warning: Concept '{string}' not found in response tokens.")
 
-        return concept_probabilities
+        return string_probabilities
