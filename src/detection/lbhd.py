@@ -9,7 +9,7 @@ class LBHD:
         self.llm = llm
         self.possible_variants = ["avg", "normalized_product", "min"]
 
-    def get_hallucination_score(self, response, variants: list[str] = None) -> dict:
+    def get_hallucination_score(self, response: tuple, variants: list[str] = None) -> dict:
         """Calculate hallucination score(s) for each sentence in the response and each concept per sentence.
 
         Args:

@@ -1,5 +1,5 @@
 .env
-scratch_pad.py
+scratch_pad.ipynb
 
 # exclude any __pycache__ directories
 **/__pycache__/
