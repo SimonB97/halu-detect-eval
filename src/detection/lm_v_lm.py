@@ -10,7 +10,7 @@ class Examiner:
         self.llm = llm
 
     def setup(self):
-        Prompts = 'Your goal is to try to verify the correctness of the following claim:{}, based on the background information you will gather. \
+        Prompts = 'Your goal is to try to verify the correctness of the following claim: <claim>\n{}\n</claim>\n, based on the background information you will gather. \
             To gather this, You will provide short questions whose purpose will be to verify the correctness of the claim, and I will reply to you with the answers to these. \
             Hopefully, with the help of the background questions and their answers, you will be able to reach a conclusion as to whether the claim is correct or possibly incorrect. \
             Please keep asking questions as long as you are yet to be sure regarding the true veracity of the claim. Please start with the first questions.'
@@ -21,10 +21,11 @@ class Examiner:
         self.message_history.append(response_message)
         
         return response
-    
+
 
     def generate_response(self):
-        pass
+        response = self.llm.get_response(self.message_history)[-1]
+        return response
 
 
 class Examinee:

@@ -14,7 +14,7 @@ class BaseLlm(ABC):
         self.url = url
 
     @abstractmethod
-    def get_response(self, message: str, system_message: str = None, max_tokens: int = 512,
+    def get_response(self, message: str | list[dict], system_message: str = None, max_tokens: int = 512,
                      temperature: float = 0.0, top_p: float = 1, repetition_penalty: float = 1, 
                      n: int = 1, return_logprobs: bool = False) -> tuple:
         pass
@@ -24,17 +24,24 @@ class TogetherAILlm(BaseLlm):
     def __init__(self, bearer_token: str, model: str, url: str = None):
         super().__init__(bearer_token, model, url if url else "https://api.together.xyz/v1/chat/completions")
 
-    def get_response(self, message: str, system_message: str = None, max_tokens: int = 512,
+    def get_response(self, message: str | list[dict], system_message: str = None, max_tokens: int = 512,
                      temperature: float = 0.0, top_p: float = 1, repetition_penalty: float = 1, 
                      n: int = 1, return_logprobs: bool = False) -> tuple:
 
-        messages = [
-            {"role": "user", "content": message}
-        ]
-        if system_message is not None:
-            messages.insert(0,
-                            {"role": "system", "content": system_message}
-            )
+        if isinstance(message, list):
+            messages = message
+            if system_message is not None:
+                messages.insert(0,
+                                {"role": "system", "content": system_message}
+                )
+        else:
+            messages = [
+                {"role": "user", "content": message}
+            ]
+            if system_message is not None:
+                messages.insert(0,
+                                {"role": "system", "content": system_message}
+                )
 
         payload = {
             "model": self.model,
@@ -82,17 +89,24 @@ class OpenAILlm(BaseLlm):
     def __init__(self, bearer_token: str, model: str, url: str = None):
         super().__init__(bearer_token, model, url if url else "https://api.openai.com/v1/chat/completions")
 
-    def get_response(self, message: str, system_message: str = None, max_tokens: int = 512,
+    def get_response(self, message: str | list[dict], system_message: str = None, max_tokens: int = 512,
                      temperature: float = 0.0, top_p: float = 1, repetition_penalty: float = 1, 
                      n: int = 1, return_logprobs: bool = False) -> tuple:
         
-        messages = [
-            {"role": "user", "content": message}
-        ]
-        if system_message is not None:
-            messages.insert(0,
-                            {"role": "system", "content": system_message}
-            )
+        if isinstance(message, list):
+            messages = message
+            if system_message is not None:
+                messages.insert(0,
+                                {"role": "system", "content": system_message}
+                )
+        else:
+            messages = [
+                {"role": "user", "content": message}
+            ]
+            if system_message is not None:
+                messages.insert(0,
+                                {"role": "system", "content": system_message}
+                )
 
         payload = {
             "model": self.model,
