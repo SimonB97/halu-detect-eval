@@ -2,4 +2,4 @@
 scratch_pad.py
 
 # exclude any __pycache__ directories
-__pycache__/
+**/__pycache__/
