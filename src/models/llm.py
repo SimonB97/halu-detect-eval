@@ -2,7 +2,6 @@ import os
 import requests
 from dotenv import load_dotenv
 from abc import ABC, abstractmethod
-# from openai import OpenAI
 import numpy as np
 
 load_dotenv()
@@ -60,11 +59,11 @@ class TogetherAILlm(BaseLlm):
 
         if return_logprobs:
             tokens = response.json()["choices"][0]["logprobs"]["tokens"]
-            linear_probabilities = np.array(response.json()["choices"][0]["logprobs"]["token_logprobs"], dtype=np.float64) if return_logprobs else None
+            linear_probabilities = np.array(response.json()["choices"][0]["logprobs"]["token_logprobs"], dtype=np.float64)
 
             # rescale linear probabilities from -1 to 1 to 0 to 1 (based on assumption for scale of linear probabilities)
-            rescaled_linear_probabilities = [(prob + 1) / 2 for prob in linear_probabilities]
-            logprobs = np.array([np.log(prob) for prob in rescaled_linear_probabilities], dtype=np.float64)
+            linear_probabilities = [(prob + 1) / 2 for prob in linear_probabilities]
+            logprobs = np.array([np.log(prob) for prob in linear_probabilities], dtype=np.float64)
             full_text = ("".join(tokens))
         else:
             full_text = response.json()["choices"][0]["message"]["content"]
@@ -95,7 +94,6 @@ class OpenAILlm(BaseLlm):
                             {"role": "system", "content": system_message}
             )
 
-        # v1: using requests
         payload = {
             "model": self.model,
             "max_tokens": max_tokens,
@@ -116,23 +114,9 @@ class OpenAILlm(BaseLlm):
         }
         response = requests.post(self.url, json=payload, headers=headers)
 
-        # # v2: using openai python sdk
-        # client = OpenAI(api_key=self.bearer_token, base_url=url.split("/v1")[0])
-        # response = client.chat.completions.create(
-        #     model=self.model,
-        #     messages=messages,
-        #     max_tokens=max_tokens,
-        #     temperature=temperature,
-        #     top_p=top_p,
-        #     frequency_penalty=repetition_penalty,
-        #     n=n,
-        #     logprobs=return_logprobs,
-        #     top_logprobs=1 if return_logprobs else 0
-        # )
-
         if return_logprobs:
             contents = response.json()["choices"][0]["logprobs"]["content"]
-            tokens, logprobs = zip(*((content["token"], np.float64(content["logprob"]) if return_logprobs else None) for content in contents))
+            tokens, logprobs = zip(*((content["token"], np.float64(content["logprob"])) for content in contents))
             tokens = list(tokens)
             logprobs = list(logprobs)
             linear_probabilities = [np.float64(np.exp(logprob)) for logprob in logprobs]
@@ -156,10 +140,12 @@ if __name__ == "__main__":
 
     llm = OpenAILlm(openai_api_key, "gpt-3.5-turbo")
     oai_response = llm.get_response(message, return_logprobs=True, max_tokens=8)
+    np.set_printoptions(precision=7, suppress=True)
+
     print("OpenAI response:\n- Tokens:", oai_response[0], "\n- Logprobs:", oai_response[1], "\n- Linear probabilities:", oai_response[2], "\n- Full text:", oai_response[3])
     print(f"- Types: Logprobs: {type(oai_response[1][0])}, Linear probabilities: {type(oai_response[2][0])}")
     print()
-    
+
     llm = TogetherAILlm(together_bearer_token, "mistralai/Mixtral-8x7B-Instruct-v0.1")
     together_response = llm.get_response(message, return_logprobs=1, max_tokens=8)
     print("TogetherAI response:\n- Tokens:", together_response[0], "\n- Logprobs:", together_response[1], "\n- Linear probabilities:", together_response[2], "\n- Full text:", together_response[3])
