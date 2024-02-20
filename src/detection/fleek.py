@@ -1,5 +1,7 @@
 from typing import List, Dict
 from src.models.llm import BaseLlm
+import json
+from src.utils.utils import print_json
 
 
 class FLEEK:
@@ -28,13 +30,65 @@ class FLEEK:
             
         Returns:
             List[Dict]: A list of dictionaries representing the extracted facts.
-        
-        Implementation Detail:
-            - Use the LLM to parse the sentence and identify entities, relations, and attributes.
-            - Depending on the complexity of the information in the sentence, construct flat or extended triple representations.
-            - This could involve prompting the LLM with specific instructions to identify and structure these facts.
         """
-        return self.llm.extract_facts(sentence)
+        system_message = (
+            "As an expert in JSON format, your task is to extract the facts from the given sentence in the form of triples. "
+            "Each triple should contain a subject, predicate, and object. If the sentence contains complex relations, "
+            "you may need to represent them as extended triples with additional attributes. Please provide the extracted facts in JSON format.\n"
+            "In the JSON standard, property names must be enclosed in double quotes, and each pair of property and value must be separated by a comma."
+        )
+        prompt_template = "Extract the facts from the given sentence: '{}'"
+        prompt = prompt_template.format(sentence)
+        examples = [
+            {'role': 'user', 'content': prompt_template.format("Taylor Swift is 30 years old.")},
+            {'role': 'assistant', 'content': '[{"flat1": {"type": "flat", "subject": "Taylor Swift", "predicate": "age", "object": "30 years old"}}]</s>'},
+            {'role': 'user', 'content': prompt_template.format("John has an age of 30 and resides in New York.")},
+            {'role': 'assistant', 'content': '[{"flat1": {"type": "flat", "subject": "John", "predicate": "age", "object": "30"}}, {"flat2": {"type": "flat", "subject": "John", "predicate": "resides in", "object": "New York"}}]</s>'},
+            {'role': 'user', 'content': prompt_template.format("John, a software engineer, works for Google in San Francisco.")},
+            {'role': 'assistant', 'content': '[{"flat1": {"type": "flat", "subject": "John", "predicate": "profession", "object": "software engineer"}}, {"extended1": {"type": "extended", "subject": "John", "predicate": "works for", "attributes": [{"predicate_id": "1", "predicate_attribute": "company", "object": "Google"}, {"predicate_id": "2", "predicate_attribute": "location", "object": "San Francisco"}]}}]</s>'},
+            {'role': 'user', 'content': prompt_template.format("Mary is a doctor and has a daughter named Emma who is 5 years old.")},
+            {'role': 'assistant', 'content': '[{"flat1": {"type": "flat", "subject": "Mary", "predicate": "profession", "object": "doctor"}}, {"flat2": {"type": "flat", "subject": "Mary", "predicate": "daughter", "object": "Emma"}}, {"flat3": {"type": "flat", "subject": "Emma", "predicate": "age", "object": "5"}}]</s>'},
+            {'role': 'user', 'content': prompt_template.format("David, a software engineer at Microsoft, recently bought a house in Seattle for $1.2 million.")},
+            {'role': 'assistant', 'content': '[{"flat1": {"type": "flat", "subject": "David", "predicate": "profession", "object": "software engineer at Microsoft"}}, {"extended1": {"type": "extended", "subject": "David", "predicate": "bought", "attributes": [{"predicate_id": "1", "predicate_attribute": "object", "object": "house"}, {"predicate_id": "2", "predicate_attribute": "location", "object": "Seattle"}, {"predicate_id": "3", "predicate_attribute": "price", "object": "$1.2 million"}]}}]</s>'},
+            {'role': 'user', 'content': prompt_template.format("Simon lives in Berlin, has a dog named Max, and likes gaming.")},
+            {'role': 'assistant', 'content': '[{"flat1": {"type": "flat", "subject": "Simon", "predicate": "lives in", "object": "Berlin"}}, {"flat2": {"type": "flat", "subject": "Simon", "predicate": "dog", "object": "Max"}}, {"flat3": {"type": "flat", "subject": "Simon", "predicate": "likes", "object": "gaming"}}]</s>'},
+        ]
+        for example in examples:
+            example['content'] = example['content'].replace('predicate_id', 'predicateID')  # Fix for JSON property name
+            example['content'] = example['content'].replace('predicate_attribute', 'predicateAttribute')  # Fix for JSON property name
+        messages = [
+            {"role": "system", "content": system_message},
+            {"role": "user", "content": prompt}
+        ]
+        for example in examples:
+            # insert right before the latest message
+            messages.insert(-1, example)
+        print_json(messages)
+        response = self.llm.get_response(messages, max_tokens=2048)[-1]
+
+        return self.parse_json(response)
+    
+
+    def parse_json(self, response: str) -> List[Dict]:
+        """
+        Extracts dictionary from the response and returns a list of dictionaries representing the extracted facts.
+
+        Args:
+            sentence (str): The response containing the extracted facts.
+
+        Returns:
+            List[Dict]: A list of dictionaries representing the extracted facts.
+        """
+        try:
+            _, _, response = response.partition('[')
+            response, _, _ = response.rpartition(']')
+            response = f"[{response}]"
+            dictionary = json.loads(response)
+        except ValueError as e:
+            print(f"Unable to parse JSON: {response}")
+            dictionary = [{"ERROR": "Unable to parse JSON"}]
+
+        return dictionary
 
 
     def generate_questions(self, facts: List[Dict]) -> List[str]:
@@ -45,7 +99,7 @@ class FLEEK:
             facts (List[Dict]): A list of fact representations extracted from the sentence.
             
         Returns:
-            List[str]: A list of questions generated for each fact.
+            List[str]: A list of questions generated for each fact in the same order as the input.
         
         Implementation Detail:
             - For flat triples, use Type-aware Question Generation (TQGen) that focuses on generating questions by understanding the 'type' of object.
@@ -54,12 +108,112 @@ class FLEEK:
         """
         questions = []
         for fact in facts:
-            if fact["type"] == "flat":
-                question = self.llm.generate_question_tqgen(fact)
-            elif fact["type"] == "extended":
-                question = self.llm.generate_question_cqgen(fact)
+            if list(fact.values())[0]["type"].lower() == "flat":
+                question = self.generate_flat_triple_question(fact)
+            elif list(fact.values())[0]["type"].lower() == "extended":
+                question = self.generate_extended_triple_question(fact)
             questions.append(question)
         return questions
+    
+
+    def generate_flat_triple_question(self, fact: Dict) -> str:
+        """
+        Generates a question for a flat triple fact using Type-aware Question Generation (TQGen).
+        
+        Args:
+            fact (Dict): A flat triple fact representation.
+            
+        Returns:
+            str: The question generated for the fact.
+        
+        Implementation Detail:
+            - Use TQGen to generate a question based on the type of the object in the flat triple.
+            - The question should be designed to elicit information about the object in the fact.
+            - Consider using prompts that guide the LLM to generate questions that are relevant and contextually appropriate.
+        """
+        system_message = (
+            "As an expert in Natural Language Processing, your task is to generate a question based on the fact. "
+            "The question should be designed to elicit information about the object in the fact.\n\n"
+            "To achieve this task, think step by step. Follow the following plan:\n"
+            "1. Identify the type of the object in the fact.\n"
+            "2. Craft a question that is relevant and contextually appropriate, making use of the identified type.\n"
+            "3. Return the type and the question in JSON format."
+        )
+        prompt_template = "Generate a question (exactly one) based on the fact:\n\nSubject: '{subject}'\nPredicate: '{predicate}'\nObject: '{object}'"
+        fact = list(fact.values())
+        print(f"DEBUG: fact: {fact}")
+        prompt = prompt_template.format(subject=fact[0]['subject'], predicate=fact[0]['predicate'], object=fact[0]['object'])
+        examples = [
+            {'role': 'user', 'content': prompt_template.format(subject="Taylor Swift", predicate="birthdate", object="1989")},
+            {'role': 'assistant', 'content': '[{"type": "Year", "question": "In which year was Taylor Swift born?"}]</s>'},
+            {'role': 'user', 'content': prompt_template.format(subject="John", predicate="age", object="30")},
+            {'role': 'assistant', 'content': '[{"type": "Age in years", "question": "How many years old is John?"}]</s>'},
+            {'role': 'user', 'content': prompt_template.format(subject="Mary", predicate="profession", object="doctor")},
+            {'role': 'assistant', 'content': '[{"type": "Profession", "question": "What is Mary\'s profession?"}]</s>'}
+        ]
+        messages = [
+            {"role": "system", "content": system_message},
+            {"role": "user", "content": prompt}
+        ]
+        for example in examples:
+            messages.insert(-1, example)
+
+        print(f"DEBUG: messages: {messages}")
+
+        response = self.llm.get_response(messages, max_tokens=2048)[-1]
+        response = response
+        return self.parse_json(response)[0]['question']
+
+
+    def generate_extended_triple_question(self, fact: Dict) -> str:
+        """
+        Generates a question for an extended triple fact using Context-driven Question Generation (CQGen).
+        
+        Args:
+            fact (Dict): An extended triple fact representation.
+            
+        Returns:
+            str: The question generated for the fact.
+        """
+        # Extract the first (and typically only) value from the fact dictionary, which contains the extended triple
+        fact_details = list(fact.values())[0]
+        
+        # Prepare the system message for guiding the LLM
+        system_message = (
+            "As an expert in Natural Language Processing, your task is to generate a question (exactly one) that incorporates "
+            "the context provided by the attributes of an extended fact triple. The question should be specific and to the point, "
+            "eliciting detailed information based on the context of the attributes. Provide the question in JSON format."
+        )
+        
+        # Format the prompt to include the subject, predicate, and attributes of the extended triple
+        attributes_formatted = ", ".join([f"{attr['predicateAttribute']}: {attr['object']}" for attr in fact_details['attributes']])
+        print(f"DEBUG: attributes_formatted: {attributes_formatted}")
+        prompt_template = (
+            "Generate a question based on the extended fact:\n\nSubject: '{subject}'\nPredicate: '{predicate}'\nAttributes: {attributes}\n\n"
+            "The question should be designed to elicit detailed information incorporating the context of the attributes and only that."
+        )
+        prompt = prompt_template.format(
+            subject=fact_details['subject'],
+            predicate=fact_details['predicate'],
+            attributes=attributes_formatted
+        )
+        examples = [
+            {'role': 'user', 'content': prompt_template.format(subject="Taylor Swift", predicate="moved to", attributes="Los Angeles")},
+            {'role': 'assistant', 'content': '[{"question": "When did Taylor Swift move to Los Angeles?"}]</s>'},
+        ]
+        messages = [
+            {"role": "system", "content": system_message},
+            {"role": "user", "content": prompt}
+        ]
+        for example in examples:
+            messages.insert(-1, example)
+        
+        # Get the response from the language model
+        response = self.llm.get_response(messages, max_tokens=2048)[-1]#
+        question = self.parse_json(response)[0]['question']
+
+        return question
+
 
 
     def retrieve_evidence_web_search(self, questions: List[str]) -> List[List[str]]:

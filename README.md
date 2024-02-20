@@ -34,4 +34,11 @@ project/
 - **LM sv LM**:
     - prompts and inspiration from [github.com/maybenotime/PHD/LMvsLM_replicate](https://github.com/maybenotime/PHD/tree/main/LMvsLM_replicate)
     - 0 = true statement, 1 = hallucination, -1 = no decision made
-    - currently hardcoded max turns to 5, as in original paper
+    - currently hardcoded max turns to 5 (as in original paper)
+
+- **FLEEK**:
+    - only using web search for evidence retrieval
+    - custom prompts (because original ones not given in paper)
+    - 6-shot for fact extraction step, to better follow JSON format (instead of 5-shot, as in original paper; authors noted difficulties with 5-shot)
+    - mistralai/Mistral-7B-Instruct-v0.2 not able to follow JSON format for extracting facts as triples
+    

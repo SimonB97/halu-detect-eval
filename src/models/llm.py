@@ -111,6 +111,7 @@ class OpenAILlm(BaseLlm):
         payload = {
             "model": self.model,
             "max_tokens": max_tokens,
+            "stop": "</s>",
             "temperature": temperature,
             "top_p": top_p,
             "frequency_penalty": repetition_penalty,
