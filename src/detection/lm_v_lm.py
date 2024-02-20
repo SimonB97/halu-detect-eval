@@ -102,12 +102,12 @@ class LMvLM:
             if 'No' in flag or count == 5:
                 examiner_history = examiner.decision()
                 trigger = False
-                print(f"DEBUG: Stop reason: {'No' if 'No' in flag else 'Max questions reached'}")
             else:
                 question = examiner.ask_continue()
-
-        print(f"DEBUG: Examiner history:\n{examiner_history}")
+                
         if 'incorrect' in examiner_history[-1]['content']:
             return 1
-        else:
+        elif 'correct' in examiner_history[-1]['content']:
             return 0
+        else:
+            return -1

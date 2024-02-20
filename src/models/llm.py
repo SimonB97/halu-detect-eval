@@ -16,7 +16,7 @@ class BaseLlm(ABC):
     @abstractmethod
     def get_response(self, message: str | list[dict], system_message: str = None, max_tokens: int = 512,
                      temperature: float = 0.0, top_p: float = 1, repetition_penalty: float = 1, 
-                     n: int = 1, return_logprobs: bool = False) -> tuple:
+                     n: int = 1, return_logprobs: bool = False, json_mode: bool = False) -> tuple:
         pass
 
 
@@ -26,7 +26,7 @@ class TogetherAILlm(BaseLlm):
 
     def get_response(self, message: str | list[dict], system_message: str = None, max_tokens: int = 512,
                      temperature: float = 0.0, top_p: float = 1, repetition_penalty: float = 1, 
-                     n: int = 1, return_logprobs: bool = False) -> tuple:
+                     n: int = 1, return_logprobs: bool = False, json_mode: bool = False) -> tuple:
 
         if isinstance(message, list):
             messages = message
@@ -53,8 +53,10 @@ class TogetherAILlm(BaseLlm):
             "repetition_penalty": repetition_penalty,
             "n": n,
             "logprobs": 0 if not return_logprobs else 1,
-            "messages": messages
+            "messages": messages,
         }
+        if json_mode:
+            payload["response_format"] = { "type": "json_object" }
 
         headers = {
             "accept": "application/json",
@@ -91,7 +93,7 @@ class OpenAILlm(BaseLlm):
 
     def get_response(self, message: str | list[dict], system_message: str = None, max_tokens: int = 512,
                      temperature: float = 0.0, top_p: float = 1, repetition_penalty: float = 1, 
-                     n: int = 1, return_logprobs: bool = False) -> tuple:
+                     n: int = 1, return_logprobs: bool = False, json_mode: bool = False) -> tuple:
         
         if isinstance(message, list):
             messages = message
@@ -111,6 +113,7 @@ class OpenAILlm(BaseLlm):
         payload = {
             "model": self.model,
             "max_tokens": max_tokens,
+            "stop": "</s>",
             "temperature": temperature,
             "top_p": top_p,
             "frequency_penalty": repetition_penalty,
@@ -120,6 +123,8 @@ class OpenAILlm(BaseLlm):
         }
         if return_logprobs:
             payload["top_logprobs"] = 1
+        if json_mode:
+            payload["response_format"] = { "type": "json_object"}
 
         headers = {
             # "accept": "application/json",
