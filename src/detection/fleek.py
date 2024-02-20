@@ -38,7 +38,9 @@ class FLEEK:
             "As an expert in JSON format, your task is to extract the facts from the given sentence in the form of triples. "
             "Each triple should contain a subject, predicate, and object. If the sentence contains complex relations, "
             "you may need to represent them as extended triples with additional attributes. Please provide the extracted facts in JSON format.\n"
-            "In the JSON standard, property names must be enclosed in double quotes, and each pair of property and value must be separated by a comma."
+            "In the JSON standard, property names must be enclosed in double quotes, and each pair of property and value must be separated by a comma. "
+            "Make sure to escape double quotes in string values. For example, \"key\": \"value\". "
+            "Also, each triple should be accessible by a unique key, such as 'flat1', 'flat2', 'extended1', etc."
         )
         prompt_template = "Extract the facts from the given sentence: '{}'"
         prompt = prompt_template.format(sentence)
@@ -67,7 +69,8 @@ class FLEEK:
             # insert right before the latest message
             messages.insert(-1, example)
         
-        response = self.llm.get_response(messages, max_tokens=2048)[-1]
+        response = self.llm.get_response(messages, max_tokens=2048, json_mode=True)[-1]
+        # print(f"DEBUG: extract_facts - response: {response}")
 
         return self.parse_json(response)
     
@@ -83,13 +86,17 @@ class FLEEK:
             List[Dict]: A list of dictionaries representing the extracted facts.
         """
         try:
+            # if no list is found, add brackets to the response
+            if (response[0] != '[') and (response[1] != '['):
+                response = f"[{response}]"
             _, _, response = response.partition('[')
             response, _, _ = response.rpartition(']')
             response = f"[{response}]"
+            # print(f"DEBUG: parsing json - response: \"{response}\"")
             dictionary = json.loads(response)
         except ValueError as e:
             print(f"Unable to parse JSON: {response}")
-            dictionary = [{"ERROR": "Unable to parse JSON"}]
+            raise e
 
         return dictionary
 
@@ -103,19 +110,20 @@ class FLEEK:
             
         Returns:
             List[str]: A list of questions generated for each fact in the same order as the input.
-        
-        Implementation Detail:
-            - For flat triples, use Type-aware Question Generation (TQGen) that focuses on generating questions by understanding the 'type' of object.
-            - For extended triples, use Context-driven Question Generation (CQGen) that incorporates context to form more precise and relevant questions.
-            - This may involve crafting prompts for the LLM that guide it to generate questions based on the structure and content of the fact.
         """
         questions = []
+        facts = list(facts[0].values())
+        
         for fact in facts:
-            if list(fact.values())[0]["type"].lower() == "flat":
+            if fact["type"].lower() == "flat":
+                print(f"DEBUG: generate_questions - flat fact: {fact}")
                 question = self.generate_flat_triple_question(fact)
-            elif list(fact.values())[0]["type"].lower() == "extended":
+            elif fact["type"].lower() == "extended":
+                print(f"DEBUG: generate_questions - extended fact: {fact}")
                 question = self.generate_extended_triple_question(fact)
             questions.append(question)
+
+        print(f"DEBUG: generate_questions - {len(questions)} questions generated: {questions}")
         return questions
     
 
@@ -138,7 +146,8 @@ class FLEEK:
             "3. Return the type and the question in JSON format."
         )
         prompt_template = "Generate a question (exactly one) based on the fact:\n\nSubject: '{subject}'\nPredicate: '{predicate}'\nObject: '{object}'"
-        fact = list(fact.values())
+        # fact = list(fact.values())
+        fact = [fact]
         prompt = prompt_template.format(subject=fact[0]['subject'], predicate=fact[0]['predicate'], object=fact[0]['object'])
         examples = [
             {'role': 'user', 'content': prompt_template.format(subject="Taylor Swift", predicate="birthdate", object="1989")},
@@ -171,7 +180,8 @@ class FLEEK:
             str: The question generated for the fact.
         """
         # Extract the first (and typically only) value from the fact dictionary, which contains the extended triple
-        fact_details = list(fact.values())[0]
+        # fact_details = list(fact.values())[0]
+        fact_details = fact
         
         # Prepare the system message for guiding the LLM
         system_message = (
@@ -204,43 +214,46 @@ class FLEEK:
         
         # Get the response from the language model
         response = self.llm.get_response(messages, max_tokens=2048)[-1]#
+        # print(f"DEBUG: generate_extended_triple_question - response: \"{response}\"")
         question = self.parse_json(response)[0]['question']
 
         return question
 
 
-    def retrieve_evidence_web_search(self, questions: List[str], search_depth: str) -> List[List[str]]:
+    def retrieve_evidence_web_search(self, questions: List[str], search_depth: str, max_results: int) -> List[List[Dict[str, str]]]:
         """
         Retrieves evidence for each question using web search, returning search result snippets.
         
         Args:
             questions (List[str]): A list of questions for which to retrieve evidence.
             search_depth (str): The search depth, as defined by Tavily's API. Either "basic" or "advanced".
+            max_results (int): The maximum number of search results to retrieve for each question.
             
         Returns:
-            List[List[str]]: A list of lists, where each inner list contains snippets of search results for a question.
+            List[List[Dict[str, str]]]: A list of lists, where each inner list contains dictionaries representing the URL and content of each search result snippet.
         """
         search_results = []
         for question in questions:
-            results = self.perform_web_search(question, search_depth)
+            results = self.perform_web_search(question, search_depth, max_results)
             search_results.append(results)
         return search_results
 
 
-    def perform_web_search(self, query: str, search_depth: str) -> List[Dict[str, str]]:
+    def perform_web_search(self, query: str, search_depth: str, max_results: int) -> List[Dict[str, str]]:
         """
         Performs a web search for the query and retrieves relevant snippets of information.
         
         Args:
             query (str): The search query.
             search_depth (str): The search depth, as defined by Tavily's API. Either "basic" or "advanced".
+            max_results (int): The maximum number of search results to retrieve for the query.
             
         Returns:
             List[Dict[str, str]]: A list of dictionaries containing the URL and content of each search result snippet.
         """
         client = TavilyClient(self.search_api_key)
         try:
-            resp = client.search(query, search_depth, max_results=5)
+            resp = client.search(query, search_depth, max_results=max_results)
             context = [{"url": obj["url"], "content": obj["content"]} for obj in resp["results"]]
             return context
         except Exception as e:
@@ -248,9 +261,9 @@ class FLEEK:
             return [{"ERROR": "An error occurred during web search {" + str(e) + "}"}]
 
 
-    def verify_facts(self, facts: List[Dict], search_results: List[List[str]]) -> List[str]:
+    def verify_facts(self, facts: List[Dict], search_results: List[List[Dict[str, str]]]) -> List[str]:
         """
-        Verifies the facts based on the evidence retrieved from web search.
+        Verifies the facts based on the evidence retrieved from web search. (Currently, all evidence is checked at once, not per fact.)
         
         Args:
             facts (List[Dict]): The facts to be verified.
@@ -265,33 +278,56 @@ class FLEEK:
             - Consider using NLP techniques for entailment or contradiction detection to enhance the verification process.
         """
         verification_results = []
-        for fact, results in zip(facts, search_results):
-            verification_status = "Unsupported"  # Default to unsupported
-            for result in results:
-                if self.fact_supported_by_evidence(fact, result):
-                    verification_status = "Supported"
-                    break  # Assuming one piece of supporting evidence is sufficient
-            verification_results.append(verification_status)
-        return verification_results
+        system_message = (
+            "As an expert in checking the groundedness of facts, your task is to verify the facts based on the evidence retrieved from an external source. "
+            "You should analyze the search results to determine if they support or contradict the facts. "
+            "If the evidence supports the fact, mark it as 'Supported'. If the evidence contradicts the fact, mark it as 'Unsupported'. "
+            "If you are unsure, mark it as 'Likely Supported' or 'Likely Unsupported'. Format your response using valid JSON. "
+            "Answer with the status ONLY, e.g., [{'status': 'Supported'}].\n\n"
+        )
+        flat_prompt_template = "Verify the fact based on the evidence retrieved from web search:\n\n<fact>\nSubject: '{subject}'\nPredicate: '{predicate}'\nObject: '{object}'\n</fact>\n\nEvidence:\n<evidence>\n{evidence}\n</evidence>"
+        extended_prompt_template = "Verify the fact based on the evidence retrieved from web search:\n\n<fact>\nSubject: '{subject}'\nPredicate: '{predicate}'\nAttributes: {attributes}\n</fact>\n\nEvidence:\n<evidence>\n{evidence}\n</evidence>"
+        search_results = search_results #[0]  
+        for i, fact in enumerate(facts[0].values()):
+            # print(f"DEBUG: verify_facts - fact {i}: {fact}\nTotal facts: {len(facts)}\nType: {type(facts[0])}\nType of fact: {type(fact)}")
+            fact_details = fact
+            # print(f"DEBUG: fact_details:")
+            print_json(fact_details)
 
+            evidence = search_results[i]  # [0]['content'] curretnly not used -> checks all evidences at once for one fact
+            # print(f"DEBUG: evidence {i} (of {len(search_results)}): {evidence}")
 
-    def fact_supported_by_evidence(self, fact: Dict, evidence: str) -> bool:
-        """
-        Determines if a piece of evidence supports a given fact.
-        
-        Args:
-            fact (Dict): The fact being verified.
-            evidence (str): A snippet of information retrieved from web search.
+            # Check if the fact is flat or extended
+            if fact_details['type'].lower() == "flat":
+                prompt = flat_prompt_template.format(subject=fact_details['subject'], predicate=fact_details['predicate'], object=fact_details['object'], evidence=evidence)
+                examples = [
+                    {'role': 'user', 'content': flat_prompt_template.format(subject="Taylor Swift", predicate="moved to", object="Los Angeles", evidence="Taylor Swift moved to Los Angeles in 2014.")},
+                    {'role': 'assistant', 'content': '[{"status": "Supported"}]</s>'},
+                    {'role': 'user', 'content': flat_prompt_template.format(subject="Elon Musk", predicate="wealth", object="rich", evidence="The Big Number: $50 Billion. Elon Musk became one of the world's richest men in part because of the pay package \u2014 to the tune of $50 billion \u2014 he was given as chief executive of Tesla. But a ...")},
+                    {'role': 'assistant', 'content': '[{"status": "Supported"}]</s>'},
+                ]
+            elif fact_details['type'].lower() == "extended":
+                attributes_formatted = ", ".join([f"{attr['predicateAttribute']}: {attr['object']}" for attr in fact_details['attributes']])
+                prompt = extended_prompt_template.format(subject=fact_details['subject'], predicate=fact_details['predicate'], attributes=attributes_formatted, evidence=evidence)
+                examples = [
+                    
+                ]
+
             
-        Returns:
-            bool: True if the evidence supports the fact, False otherwise.
-        
-        Implementation Detail:
-            - Analyze the evidence to determine if it supports the fact.
-            - This might involve keyword matching, checking for semantic similarity, or performing entailment analysis between the fact and evidence.
-            - The level of analysis required can vary based on the complexity of the fact and the clarity of the evidence.
-        """
-        return "supporting information" in evidence  # Simplified example
+            messages = [
+                {"role": "system", "content": system_message},
+                {"role": "user", "content": prompt}
+            ]
+            for example in examples:
+                messages.insert(-1, example)
+            # print(f"DEBUG: messages:")
+            print_json(messages)
+            response = self.llm.get_response(messages, max_tokens=100, json_mode=True)[-1]
+            # print(f"DEBUG: response:")
+            # print_json(response)
+            verification_results.append(self.parse_json(response)[0]['status'])
+
+        return verification_results
 
 
     def get_hallucination_score(self, response: tuple) -> List[str]:
