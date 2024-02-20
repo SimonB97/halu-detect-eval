@@ -41,4 +41,4 @@ project/
     - custom prompts (because original ones not given in paper)
     - 6-shot for fact extraction step, to better follow JSON format (instead of 5-shot, as in original paper; authors noted difficulties with 5-shot)
     - mistralai/Mistral-7B-Instruct-v0.2 not able to follow JSON format for extracting facts as triples
-    
+    - hardcoded max results for web search to 5 (as indicated original paper)

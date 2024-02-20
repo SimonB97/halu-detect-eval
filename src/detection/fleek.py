@@ -2,10 +2,12 @@ from typing import List, Dict
 from src.models.llm import BaseLlm
 import json
 from src.utils.utils import print_json
+from tavily import TavilyClient
+
 
 
 class FLEEK:
-    def __init__(self, llm: BaseLlm):
+    def __init__(self, llm: BaseLlm, search_api_key: str):
         """
         Initializes the method with an instance of a language model for fact extraction, question generation, and verification.
         
@@ -13,6 +15,7 @@ class FLEEK:
             llm (BaseLlm): An instance of a language model.
         """
         self.llm = llm
+        self.search_api_key = search_api_key
 
 
     def extract_facts(self, sentence: str) -> List[Dict]:
@@ -63,7 +66,7 @@ class FLEEK:
         for example in examples:
             # insert right before the latest message
             messages.insert(-1, example)
-        print_json(messages)
+        
         response = self.llm.get_response(messages, max_tokens=2048)[-1]
 
         return self.parse_json(response)
@@ -125,11 +128,6 @@ class FLEEK:
             
         Returns:
             str: The question generated for the fact.
-        
-        Implementation Detail:
-            - Use TQGen to generate a question based on the type of the object in the flat triple.
-            - The question should be designed to elicit information about the object in the fact.
-            - Consider using prompts that guide the LLM to generate questions that are relevant and contextually appropriate.
         """
         system_message = (
             "As an expert in Natural Language Processing, your task is to generate a question based on the fact. "
@@ -141,7 +139,6 @@ class FLEEK:
         )
         prompt_template = "Generate a question (exactly one) based on the fact:\n\nSubject: '{subject}'\nPredicate: '{predicate}'\nObject: '{object}'"
         fact = list(fact.values())
-        print(f"DEBUG: fact: {fact}")
         prompt = prompt_template.format(subject=fact[0]['subject'], predicate=fact[0]['predicate'], object=fact[0]['object'])
         examples = [
             {'role': 'user', 'content': prompt_template.format(subject="Taylor Swift", predicate="birthdate", object="1989")},
@@ -157,8 +154,6 @@ class FLEEK:
         ]
         for example in examples:
             messages.insert(-1, example)
-
-        print(f"DEBUG: messages: {messages}")
 
         response = self.llm.get_response(messages, max_tokens=2048)[-1]
         response = response
@@ -187,7 +182,6 @@ class FLEEK:
         
         # Format the prompt to include the subject, predicate, and attributes of the extended triple
         attributes_formatted = ", ".join([f"{attr['predicateAttribute']}: {attr['object']}" for attr in fact_details['attributes']])
-        print(f"DEBUG: attributes_formatted: {attributes_formatted}")
         prompt_template = (
             "Generate a question based on the extended fact:\n\nSubject: '{subject}'\nPredicate: '{predicate}'\nAttributes: {attributes}\n\n"
             "The question should be designed to elicit detailed information incorporating the context of the attributes and only that."
@@ -215,46 +209,43 @@ class FLEEK:
         return question
 
 
-
-    def retrieve_evidence_web_search(self, questions: List[str]) -> List[List[str]]:
+    def retrieve_evidence_web_search(self, questions: List[str], search_depth: str) -> List[List[str]]:
         """
         Retrieves evidence for each question using web search, returning search result snippets.
         
         Args:
             questions (List[str]): A list of questions for which to retrieve evidence.
+            search_depth (str): The search depth, as defined by Tavily's API. Either "basic" or "advanced".
             
         Returns:
             List[List[str]]: A list of lists, where each inner list contains snippets of search results for a question.
-        
-        Implementation Detail:
-            - Implement web search queries using an API or scraping technique.
-            - For each question, retrieve the top-k search results and extract relevant snippets that might contain answers.
-            - Ensure the search query is well-formed to maximize the relevance of the returned results.
         """
         search_results = []
         for question in questions:
-            results = self.perform_web_search(question)
+            results = self.perform_web_search(question, search_depth)
             search_results.append(results)
         return search_results
 
 
-    def perform_web_search(self, query: str) -> List[str]:
+    def perform_web_search(self, query: str, search_depth: str) -> List[Dict[str, str]]:
         """
         Performs a web search for the query and retrieves relevant snippets of information.
         
         Args:
             query (str): The search query.
+            search_depth (str): The search depth, as defined by Tavily's API. Either "basic" or "advanced".
             
         Returns:
-            List[str]: A list of snippets from the search results.
-        
-        Implementation Detail:
-            - This function needs to perform an actual web search. You can use APIs provided by search engines like Bing or Google.
-            - Process the search results to extract and return the most relevant snippets of information that answer the query.
-            - Be mindful of rate limits and API costs if using a commercial search API.
+            List[Dict[str, str]]: A list of dictionaries containing the URL and content of each search result snippet.
         """
-        # Placeholder for web search logic
-        return ["Search result snippet 1", "Search result snippet 2"]  # Example results
+        client = TavilyClient(self.search_api_key)
+        try:
+            resp = client.search(query, search_depth, max_results=5)
+            context = [{"url": obj["url"], "content": obj["content"]} for obj in resp["results"]]
+            return context
+        except Exception as e:
+            print(f"An error occurred during web search: {e}")
+            return [{"ERROR": "An error occurred during web search {" + str(e) + "}"}]
 
 
     def verify_facts(self, facts: List[Dict], search_results: List[List[str]]) -> List[str]:
@@ -303,17 +294,17 @@ class FLEEK:
         return "supporting information" in evidence  # Simplified example
 
 
-    def process_sentence(self, sentence: str) -> List[str]:
+    def get_hallucination_score(self, response: tuple) -> List[str]:
         """
         Processes a given sentence through the complete FLEEK methodology: fact extraction, question generation, evidence retrieval, and verification.
         
         Args:
-            sentence (str): The sentence to be processed.
+            response (tuple): The response tuple containing tokens, logprobs, linear probabilities, and the complete response string. Only the string is used here.
             
         Returns:
             List[str]: The verification results for each fact extracted from the sentence.
         """
-        facts = self.extract_facts(sentence)
+        facts = self.extract_facts(response[-1])
         questions = self.generate_questions(facts)
         search_results = self.retrieve_evidence_web_search(questions)
         verification_results = self.verify_facts(facts, search_results)
