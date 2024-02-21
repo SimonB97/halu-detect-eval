@@ -356,9 +356,6 @@ class FLEEK:
         Returns:
             str: 'supports' if the evidence supports the fact, 'contradicts' if not, or 'neutral'.
         """
-        # Assuming response parsing logic is implemented here based on your LLM's output format
-        # This is a placeholder to indicate where you'd analyze the LLM's textual response.
-        # You might use keywords, sentiment analysis, or more sophisticated NLP methods.
         if "supports" in response:
             return "supports"
         elif "contradicts" in response:
@@ -399,15 +396,18 @@ class FLEEK:
 
         # without splitting into sentences
         facts = self.extract_facts(response[-1])
-        print(f"DEBUG: get_hallucination_score - facts:")
+        # print(f"DEBUG: get_hallucination_score - facts:")
         print_json(facts)
         questions = self.generate_questions(facts)
-        print(f"DEBUG: get_hallucination_score - questions:")
+        # print(f"DEBUG: get_hallucination_score - questions:")
         print_json(questions)
         search_results = self.retrieve_evidence_web_search(questions, "advanced", max_results=10)
-        print(f"DEBUG: get_hallucination_score - search_results:")
+        # print(f"DEBUG: get_hallucination_score - search_results:")
         print_json(search_results)
         verification_results = self.verify_facts(facts, search_results)
-        response_scores = verification_results
+        # return as dictionary
+        # turn into dictionary with one score
+        response_scores = {}
+        response_scores[response[-1]] = {"score": verification_results[0]}
 
         return response_scores

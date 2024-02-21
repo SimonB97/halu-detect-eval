@@ -43,6 +43,7 @@ project/
     - mistralai/Mistral-7B-Instruct-v0.2 not able to follow JSON format for extracting facts as triples
     - hardcoded max results for web search to 10 (5 in original paper), since Knowledge Graph (KG) search is not used
     - unified evidence classification (supported/unsupported) and fact verification (true/false) into one step
+    - only returns binary classification (supported/unsupported) for sentences (original paper used higher granularity)
 
 
 ## General Implementation Notes

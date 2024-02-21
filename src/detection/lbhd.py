@@ -25,7 +25,7 @@ class LBHD:
         response_scores = {}
 
         for sentence in sentences:
-            print(f"Processing sentence: {sentence}")
+            # print(f"Processing sentence: {sentence}")
             key_concepts = self.identify_concepts(self.llm, sentence)
             concept_probabilities = self.get_token_probabilities(key_concepts, response)
 
@@ -39,7 +39,7 @@ class LBHD:
             sentence_probabilities = self.get_token_probabilities([sentence], response)
             sentence_scores = self.get_substring_score(variants, sentence_probabilities[sentence.strip().replace('.', '')])
             
-            response_scores[sentence] = dict(sentence_scores, **{"concepts": scores_per_concept})
+            response_scores[sentence] = {"score": dict(sentence_scores, **{"concepts": scores_per_concept})}
 
         return response_scores
     

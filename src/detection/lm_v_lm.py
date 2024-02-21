@@ -39,7 +39,7 @@ class Examiner:
         )
         message = {"role": "user", "content": prompt}
         self.message_history.append(message)
-        system_message = 'You are an expert at following giudelines for structuring text.Answer ONLY with "correct" or "incorrect".'
+        system_message = 'You are an expert at following guidelines for structuring text. Answer ONLY with "correct" or "incorrect".'
         messages = self.message_history
         messages.insert(-2, {"role": "system", "content": system_message})
         response = self.llm.get_response(messages, max_tokens=50)[-1]
@@ -90,8 +90,9 @@ class LMvLM:
 
     def get_hallucination_score(self, response: tuple, variants: list[str] = None) -> dict:
 
-        examiner = Examiner(response[-1], self.examiner_llm)
-        examinee = Examinee(response[-1], self.examinee_llm)
+        resp_text = response[-1]
+        examiner = Examiner(resp_text, self.examiner_llm)
+        examinee = Examinee(resp_text, self.examinee_llm)
         question = examiner.setup()
         trigger = True
         count = 1
@@ -104,10 +105,12 @@ class LMvLM:
                 trigger = False
             else:
                 question = examiner.ask_continue()
+
+        stop_reason = "Max turns reached" if count == 5 else "Examiner concluded"
                 
         if 'incorrect' in examiner_history[-1]['content']:
-            return 1
+            return {resp_text: {"score": 1, "stop_reason": stop_reason}}
         elif 'correct' in examiner_history[-1]['content']:
-            return 0
+            return {resp_text: {"score": 0, "stop_reason": stop_reason}}
         else:
-            return -1
+            return {resp_text: {"score": -1, "stop_reason": stop_reason}}
