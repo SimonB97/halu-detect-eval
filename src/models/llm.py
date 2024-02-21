@@ -133,18 +133,22 @@ class OpenAILlm(BaseLlm):
         }
         response = requests.post(self.url, json=payload, headers=headers)
 
-        if return_logprobs:
-            contents = response.json()["choices"][0]["logprobs"]["content"]
-            tokens, logprobs = zip(*((content["token"], np.float64(content["logprob"])) for content in contents))
-            tokens = list(tokens)
-            logprobs = list(logprobs)
-            linear_probabilities = [np.float64(np.exp(logprob)) for logprob in logprobs]
-            full_text = ("".join(tokens))
-        else:
-            full_text = response.json()["choices"][0]["message"]["content"]
-            tokens = None
-            logprobs = None
-            linear_probabilities = None
+        try:
+            if return_logprobs:
+                contents = response.json()["choices"][0]["logprobs"]["content"]
+                tokens, logprobs = zip(*((content["token"], np.float64(content["logprob"])) for content in contents))
+                tokens = list(tokens)
+                logprobs = list(logprobs)
+                linear_probabilities = [np.float64(np.exp(logprob)) for logprob in logprobs]
+                full_text = ("".join(tokens))
+            else:
+                full_text = response.json()["choices"][0]["message"]["content"]
+                tokens = None
+                logprobs = None
+                linear_probabilities = None
+        except KeyError:
+            print(response.json())
+            raise KeyError
 
         return tokens, logprobs, linear_probabilities, full_text
 

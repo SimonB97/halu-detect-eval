@@ -40,23 +40,24 @@ class FLEEK:
             "you may need to represent them as extended triples with additional attributes. Please provide the extracted facts in JSON format.\n"
             "In the JSON standard, property names must be enclosed in double quotes, and each pair of property and value must be separated by a comma. "
             "Make sure to escape double quotes in string values. For example, \"key\": \"value\". "
-            "Also, each triple should be accessible by a unique key, such as 'flat1', 'flat2', 'extended1', etc."
+            "Also, each triple should be accessible by a unique key, such as 'flat1', 'flat2', 'extended1', etc. "
+            "End your JSON with the '</s>' token."
         )
         prompt_template = "Extract the facts from the given sentence: '{}'"
         prompt = prompt_template.format(sentence)
         examples = [
             {'role': 'user', 'content': prompt_template.format("Taylor Swift is 30 years old.")},
-            {'role': 'assistant', 'content': '[{"flat1": {"type": "flat", "subject": "Taylor Swift", "predicate": "age", "object": "30 years old"}}]</s>'},
+            {'role': 'assistant', 'content': '[{"flat1": {"type": "flat", "subject": "Taylor Swift", "predicate": "age", "object": "30 years old"}}]'},
             {'role': 'user', 'content': prompt_template.format("John has an age of 30 and resides in New York.")},
-            {'role': 'assistant', 'content': '[{"flat1": {"type": "flat", "subject": "John", "predicate": "age", "object": "30"}}, {"flat2": {"type": "flat", "subject": "John", "predicate": "resides in", "object": "New York"}}]</s>'},
+            {'role': 'assistant', 'content': '[{"flat1": {"type": "flat", "subject": "John", "predicate": "age", "object": "30"}}, {"flat2": {"type": "flat", "subject": "John", "predicate": "resides in", "object": "New York"}}]'},
             {'role': 'user', 'content': prompt_template.format("John, a software engineer, works for Google in San Francisco.")},
-            {'role': 'assistant', 'content': '[{"flat1": {"type": "flat", "subject": "John", "predicate": "profession", "object": "software engineer"}}, {"extended1": {"type": "extended", "subject": "John", "predicate": "works for", "attributes": [{"predicate_id": "1", "predicate_attribute": "company", "object": "Google"}, {"predicate_id": "2", "predicate_attribute": "location", "object": "San Francisco"}]}}]</s>'},
+            {'role': 'assistant', 'content': '[{"flat1": {"type": "flat", "subject": "John", "predicate": "profession", "object": "software engineer"}}, {"extended1": {"type": "extended", "subject": "John", "predicate": "works for", "attributes": [{"predicate_id": "1", "predicate_attribute": "company", "object": "Google"}, {"predicate_id": "2", "predicate_attribute": "location", "object": "San Francisco"}]}}]'},
             {'role': 'user', 'content': prompt_template.format("Mary is a doctor and has a daughter named Emma who is 5 years old.")},
-            {'role': 'assistant', 'content': '[{"flat1": {"type": "flat", "subject": "Mary", "predicate": "profession", "object": "doctor"}}, {"flat2": {"type": "flat", "subject": "Mary", "predicate": "daughter", "object": "Emma"}}, {"flat3": {"type": "flat", "subject": "Emma", "predicate": "age", "object": "5"}}]</s>'},
+            {'role': 'assistant', 'content': '[{"flat1": {"type": "flat", "subject": "Mary", "predicate": "profession", "object": "doctor"}}, {"flat2": {"type": "flat", "subject": "Mary", "predicate": "daughter", "object": "Emma"}}, {"flat3": {"type": "flat", "subject": "Emma", "predicate": "age", "object": "5"}}]'},
             {'role': 'user', 'content': prompt_template.format("David, a software engineer at Microsoft, recently bought a house in Seattle for $1.2 million.")},
-            {'role': 'assistant', 'content': '[{"flat1": {"type": "flat", "subject": "David", "predicate": "profession", "object": "software engineer at Microsoft"}}, {"extended1": {"type": "extended", "subject": "David", "predicate": "bought", "attributes": [{"predicate_id": "1", "predicate_attribute": "object", "object": "house"}, {"predicate_id": "2", "predicate_attribute": "location", "object": "Seattle"}, {"predicate_id": "3", "predicate_attribute": "price", "object": "$1.2 million"}]}}]</s>'},
+            {'role': 'assistant', 'content': '[{"flat1": {"type": "flat", "subject": "David", "predicate": "profession", "object": "software engineer at Microsoft"}}, {"extended1": {"type": "extended", "subject": "David", "predicate": "bought", "attributes": [{"predicate_id": "1", "predicate_attribute": "object", "object": "house"}, {"predicate_id": "2", "predicate_attribute": "location", "object": "Seattle"}, {"predicate_id": "3", "predicate_attribute": "price", "object": "$1.2 million"}]}}]'},
             {'role': 'user', 'content': prompt_template.format("Simon lives in Berlin, has a dog named Max, and likes gaming.")},
-            {'role': 'assistant', 'content': '[{"flat1": {"type": "flat", "subject": "Simon", "predicate": "lives in", "object": "Berlin"}}, {"flat2": {"type": "flat", "subject": "Simon", "predicate": "dog", "object": "Max"}}, {"flat3": {"type": "flat", "subject": "Simon", "predicate": "likes", "object": "gaming"}}]</s>'},
+            {'role': 'assistant', 'content': '[{"flat1": {"type": "flat", "subject": "Simon", "predicate": "lives in", "object": "Berlin"}}, {"flat2": {"type": "flat", "subject": "Simon", "predicate": "dog", "object": "Max"}}, {"flat3": {"type": "flat", "subject": "Simon", "predicate": "likes", "object": "gaming"}}]'},
         ]
         for example in examples:
             example['content'] = example['content'].replace('predicate_id', 'predicateID')  # Fix for JSON property name
@@ -69,8 +70,8 @@ class FLEEK:
             # insert right before the latest message
             messages.insert(-1, example)
         
-        response = self.llm.get_response(messages, max_tokens=2048, json_mode=True)[-1]
-        # print(f"DEBUG: extract_facts - response: {response}")
+        response = self.llm.get_response(messages, max_tokens=2048, json_mode=False)[-1]
+        print(f"DEBUG: extract_facts - response: {response}")
 
         return self.parse_json(response)
     
@@ -263,71 +264,104 @@ class FLEEK:
 
     def verify_facts(self, facts: List[Dict], search_results: List[List[Dict[str, str]]]) -> List[str]:
         """
-        Verifies the facts based on the evidence retrieved from web search. (Currently, all evidence is checked at once, not per fact.)
+        Verifies the facts based on the evidence retrieved from web search, constructing evidence triples 
+        for entailment checking.
         
         Args:
-            facts (List[Dict]): The facts to be verified.
-            search_results (List[List[str]]): The search result snippets retrieved for each fact's question.
+            facts (List[Dict]): The facts to be verified, extracted from the text.
+            search_results (List[List[Dict[str, str]]]): The search result snippets retrieved for each fact's question.
             
         Returns:
-            List[str]: The verification status for each fact, e.g., "Supported", "Unsupported".
-        
-        Implementation Detail:
-            - For each fact, check if the corresponding search results contain information that supports or contradicts the fact.
-            - This step might involve semantic analysis to compare the fact details with the information in the search results.
-            - Consider using NLP techniques for entailment or contradiction detection to enhance the verification process.
+            List[str]: The verification status for each fact.
         """
         verification_results = []
-        system_message = (
-            "As an expert in checking the groundedness of facts, your task is to verify the facts based on the evidence retrieved from an external source. "
-            "You should analyze the search results to determine if they support or contradict the facts. "
-            "If the evidence supports the fact, mark it as 'Supported'. If the evidence contradicts the fact, mark it as 'Unsupported'. "
-            "If you are unsure, mark it as 'Likely Supported' or 'Likely Unsupported'. Format your response using valid JSON. "
-            "Answer with the status ONLY, e.g., [{'status': 'Supported'}].\n\n"
-        )
-        flat_prompt_template = "Verify the fact based on the evidence retrieved from web search:\n\n<fact>\nSubject: '{subject}'\nPredicate: '{predicate}'\nObject: '{object}'\n</fact>\n\nEvidence:\n<evidence>\n{evidence}\n</evidence>"
-        extended_prompt_template = "Verify the fact based on the evidence retrieved from web search:\n\n<fact>\nSubject: '{subject}'\nPredicate: '{predicate}'\nAttributes: {attributes}\n</fact>\n\nEvidence:\n<evidence>\n{evidence}\n</evidence>"
-        search_results = search_results #[0]  
-        for i, fact in enumerate(facts[0].values()):
-            # print(f"DEBUG: verify_facts - fact {i}: {fact}\nTotal facts: {len(facts)}\nType: {type(facts[0])}\nType of fact: {type(fact)}")
-            fact_details = fact
-            # print(f"DEBUG: fact_details:")
-            print_json(fact_details)
+        
+        # Iterate through each fact and its corresponding search results
+        for fact_idx, fact in enumerate(facts):
+            # Assuming facts is a list of dictionaries with 'subject', 'predicate', and 'object' keys
+            fact = list(fact.values())[0]
+            subject = fact['subject']
+            predicate = fact['predicate']
 
-            evidence = search_results[i]  # [0]['content'] curretnly not used -> checks all evidences at once for one fact
-            # print(f"DEBUG: evidence {i} (of {len(search_results)}): {evidence}")
-
-            # Check if the fact is flat or extended
-            if fact_details['type'].lower() == "flat":
-                prompt = flat_prompt_template.format(subject=fact_details['subject'], predicate=fact_details['predicate'], object=fact_details['object'], evidence=evidence)
-                examples = [
-                    {'role': 'user', 'content': flat_prompt_template.format(subject="Taylor Swift", predicate="moved to", object="Los Angeles", evidence="Taylor Swift moved to Los Angeles in 2014.")},
-                    {'role': 'assistant', 'content': '[{"status": "Supported"}]</s>'},
-                    {'role': 'user', 'content': flat_prompt_template.format(subject="Elon Musk", predicate="wealth", object="rich", evidence="The Big Number: $50 Billion. Elon Musk became one of the world's richest men in part because of the pay package \u2014 to the tune of $50 billion \u2014 he was given as chief executive of Tesla. But a ...")},
-                    {'role': 'assistant', 'content': '[{"status": "Supported"}]</s>'},
-                ]
-            elif fact_details['type'].lower() == "extended":
-                attributes_formatted = ", ".join([f"{attr['predicateAttribute']}: {attr['object']}" for attr in fact_details['attributes']])
-                prompt = extended_prompt_template.format(subject=fact_details['subject'], predicate=fact_details['predicate'], attributes=attributes_formatted, evidence=evidence)
-                examples = [
-                    
-                ]
-
+            print(f"DEBUG: verify_facts - fact: {fact}")
             
-            messages = [
-                {"role": "system", "content": system_message},
-                {"role": "user", "content": prompt}
-            ]
-            for example in examples:
-                messages.insert(-1, example)
-            # print(f"DEBUG: messages:")
-            print_json(messages)
-            response = self.llm.get_response(messages, max_tokens=100, json_mode=True)[-1]
-            # print(f"DEBUG: response:")
-            # print_json(response)
-            verification_results.append(self.parse_json(response)[0]['status'])
+            # Iterate through each piece of evidence for the current fact
+            for evidence in search_results[fact_idx]:
+                # Construct evidence triple by using the answer as the new object
+                evidence_text = evidence['content']  # Assuming 'content' holds the textual evidence
+                evidence_triple = {"subject": subject, "predicate": predicate, "object": evidence_text}
+                
+                # Prepare prompt for LLM entailment checking
+                system_message = (
+                    "As an expert in checking facts for groundedness, your task is to verify the evidence against the fact. "
+                    "The evidence triple is constructed from the fact and the retrieved evidence. "
+                    "Answer either with 'supports' if the evidence supports the fact, 'contradicts' if not, or 'neutral'. "
+                    "Please provide the verification result in JSON format."
+                )
+
+                if fact['type'] == "extended":
+                    fact_type = "extended"
+                else:
+                    fact_type = "flat"
+                prompt = self.construct_verification_prompt(fact, evidence_triple, fact_type)
+                print(f"DEBUG: verify_facts - prompt: {prompt}")
+                
+                # Use LLM to verify the evidence against the fact
+                response = self.llm.get_response(prompt, system_message, max_tokens=512, json_mode=True)[-1]
+                verification_result = self.parse_llm_response_for_verification(response)
+                
+                # Decision logic based on LLM response
+                if verification_result == "supports":
+                    verification_results.append("Supported")
+                    break  # If one piece of evidence supports the fact, consider it verified
+            else:
+                # If no evidence supports the fact, mark it as Questionable or Not Supported based on your criteria
+                verification_results.append("Questionable")
 
         return verification_results
+
+    def construct_verification_prompt(self, fact: Dict, evidence_triple: Dict, fact_type: str) -> str:
+        """
+        Constructs a prompt for the LLM to verify a fact against an evidence triple.
+        
+        Args:
+            fact (Dict): The original fact.
+            evidence_triple (Dict): The evidence triple constructed from web search results.
+            fact_type (str): The type of the fact, either "flat" or "extended".
+            
+        Returns:
+            str: A prompt for the LLM.
+        """
+        if fact_type == "flat":
+            return f"Given the fact (Subject: {fact['subject']}, Predicate: {fact['predicate']}, Object: {fact['object']}) " \
+                f"and the evidence (Subject: {evidence_triple['subject']}, Predicate: {evidence_triple['predicate']}, " \
+                f"Object: {evidence_triple['object']}), does the evidence support the fact?"
+        else:
+            attributes = ", ".join([f"{attr['predicateAttribute']}: {attr['object']}" for attr in fact['attributes']])
+            return f"Given the fact (Subject: {fact['subject']}, Predicate: {fact['predicate']}, Attributes: {attributes}) " \
+                f"and the evidence (Subject: {evidence_triple['subject']}, Predicate: {evidence_triple['predicate']}, " \
+                f"Object: {evidence_triple['object']}), does the evidence support the fact?"
+
+    def parse_llm_response_for_verification(self, response: str) -> str:
+        """
+        Parses the LLM response to extract the verification result.
+        
+        Args:
+            response (str): The LLM's response to a verification prompt.
+            
+        Returns:
+            str: 'supports' if the evidence supports the fact, 'contradicts' if not, or 'neutral'.
+        """
+        # Assuming response parsing logic is implemented here based on your LLM's output format
+        # This is a placeholder to indicate where you'd analyze the LLM's textual response.
+        # You might use keywords, sentiment analysis, or more sophisticated NLP methods.
+        if "supports" in response:
+            return "supports"
+        elif "contradicts" in response:
+            return "contradicts"
+        else:
+            return "neutral"
+
 
 
     def get_hallucination_score(self, response: tuple) -> List[str]:
