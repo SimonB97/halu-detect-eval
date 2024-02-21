@@ -1,7 +1,7 @@
 import json
-import spacy
+# import spacy
 from spacy.lang.en import English
-import re
+# import re
 
 
 def print_json(data: dict | list | str) -> None:
