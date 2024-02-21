@@ -1,5 +1,5 @@
 from detection.lbhd import LBHD
-from models.llm import OpenAILlm
+from models.llm import OpenAILlm, TogetherAILlm
 
 # Set Authentication Tokens in .env file!
 
