@@ -108,9 +108,12 @@ class LMvLM:
 
         stop_reason = "Max turns reached" if count == 5 else "Examiner concluded"
                 
-        if 'incorrect' in examiner_history[-1]['content']:
-            return {resp_text: {"score": 1, "stop_reason": stop_reason}}
-        elif 'correct' in examiner_history[-1]['content']:
-            return {resp_text: {"score": 0, "stop_reason": stop_reason}}
+        if 'correct' in examiner_history[-1]['content'] and 'incorrect' not in examiner_history[-1]['content']:
+            # No Hallucination detected
+            return {resp_text: {"score": 0.0, "stop_reason": stop_reason}}
+        elif 'incorrect' in examiner_history[-1]['content']:
+            # Hallucination detected
+            return {resp_text: {"score": 1.0, "stop_reason": stop_reason}}
         else:
-            return {resp_text: {"score": -1, "stop_reason": stop_reason}}
+            # Inconclusive
+            return {resp_text: {"score": 0.5, "stop_reason": stop_reason}}
