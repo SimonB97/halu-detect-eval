@@ -71,7 +71,7 @@ class FLEEK:
             messages.insert(-1, example)
         
         response = self.llm.get_response(messages, max_tokens=2048, json_mode=False)[-1]
-        print(f"DEBUG: extract_facts - response: {response}")
+        # print(f"DEBUG: extract_facts - response: {response}")
 
         return self.parse_json(response)
     
@@ -117,14 +117,14 @@ class FLEEK:
         
         for fact in facts:
             if fact["type"].lower() == "flat":
-                print(f"DEBUG: generate_questions - flat fact: {fact}")
+                # print(f"DEBUG: generate_questions - flat fact: {fact}")
                 question = self.generate_flat_triple_question(fact)
             elif fact["type"].lower() == "extended":
-                print(f"DEBUG: generate_questions - extended fact: {fact}")
+                # print(f"DEBUG: generate_questions - extended fact: {fact}")
                 question = self.generate_extended_triple_question(fact)
             questions.append(question)
 
-        print(f"DEBUG: generate_questions - {len(questions)} questions generated: {questions}")
+        # print(f"DEBUG: generate_questions - {len(questions)} questions generated: {questions}")
         return questions
     
 
@@ -144,7 +144,9 @@ class FLEEK:
             "To achieve this task, think step by step. Follow the following plan:\n"
             "1. Identify the type of the object in the fact.\n"
             "2. Craft a question that is relevant and contextually appropriate, making use of the identified type.\n"
-            "3. Return the type and the question in JSON format."
+            "3. Return the type and the question in JSON format. The statement (context) will not be provided together with the question, just the question on it's own. "
+            "E.g., if the triple is (Facebook, makes, people socially isolated), the question should NOT be 'What effect does Facebook have on people according to the statement?', "
+            "but rather 'What effect does Facebook have on peoples' social life?'"
         )
         prompt_template = "Generate a question (exactly one) based on the fact:\n\nSubject: '{subject}'\nPredicate: '{predicate}'\nObject: '{object}'"
         # fact = list(fact.values())
@@ -188,7 +190,8 @@ class FLEEK:
         system_message = (
             "As an expert in Natural Language Processing, your task is to generate a question (exactly one) that incorporates "
             "the context provided by the attributes of an extended fact triple. The question should be specific and to the point, "
-            "eliciting detailed information based on the context of the attributes. Provide the question in JSON format."
+            "eliciting detailed information based on the context of the attributes. Provide the question in JSON format. "
+            "The statement (context) will not be provided together with the question, just the question on it's own."
         )
         
         # Format the prompt to include the subject, predicate, and attributes of the extended triple
@@ -283,7 +286,7 @@ class FLEEK:
             subject = fact['subject']
             predicate = fact['predicate']
 
-            print(f"DEBUG: verify_facts - fact: {fact}")
+            # print(f"DEBUG: verify_facts - fact: {fact}")
             
             # Iterate through each piece of evidence for the current fact
             for evidence in search_results[fact_idx]:
@@ -304,7 +307,7 @@ class FLEEK:
                 else:
                     fact_type = "flat"
                 prompt = self.construct_verification_prompt(fact, evidence_triple, fact_type)
-                print(f"DEBUG: verify_facts - prompt: {prompt}")
+                # print(f"DEBUG: verify_facts - prompt: {prompt}")
                 
                 # Use LLM to verify the evidence against the fact
                 response = self.llm.get_response(prompt, system_message, max_tokens=512, json_mode=True)[-1]
@@ -312,7 +315,7 @@ class FLEEK:
                 
                 # Decision logic based on LLM response
                 if verification_result == "supports":
-                    verification_results.append("Supported")
+                    verification_results.append("Likely Supported")
                     break  # If one piece of evidence supports the fact, consider it verified
             else:
                 # If no evidence supports the fact, mark it as Questionable or Not Supported based on your criteria
