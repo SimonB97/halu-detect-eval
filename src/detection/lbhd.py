@@ -1,6 +1,7 @@
 """Logit-based Hallucination Detection (LBHD) method."""
 
 from src.models.llm import BaseLlm
+from src.utils.utils import split_into_sentences_spacy
 import numpy as np
 import re
 
@@ -20,7 +21,7 @@ class LBHD:
             dict: A dictionary with sentences as keys and their hallucination scores as values.
         """
         # print(f"DEBUG: Response response:\n- Tokens:", response[0], "\n- Logprobs:", response[1], "\n- Linear probabilities:", response[2], "\n- Full text:", response[3])
-        sentences = self.split_into_sentences(response[-1])
+        sentences = split_into_sentences_spacy(response[-1])
         response_scores = {}
 
         for sentence in sentences:
@@ -62,11 +63,6 @@ class LBHD:
         score = np.exp(np.sum(log_probs) / len(adjusted_probs))
         return score
 
-    @staticmethod
-    def split_into_sentences(text: str) -> list:
-        """Split text into sentences using simple punctuation marks."""
-        sentences = re.split(r'(?<=[.!?]) +', text)
-        return sentences
 
     @staticmethod
     def identify_concepts(llm: BaseLlm, statement: str) -> list[str]:

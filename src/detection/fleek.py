@@ -1,5 +1,6 @@
 from typing import List, Dict
 from src.models.llm import BaseLlm
+from src.utils.utils import split_into_sentences_spacy
 import json
 from src.utils.utils import print_json
 from tavily import TavilyClient
@@ -35,8 +36,8 @@ class FLEEK:
             List[Dict]: A list of dictionaries representing the extracted facts.
         """
         system_message = (
-            "As an expert in JSON format, your task is to extract the facts from the given sentence in the form of triples. "
-            "Each triple should contain a subject, predicate, and object. If the sentence contains complex relations, "
+            "As an expert in JSON format, your task is to extract the facts from the given statement in the form of triples. "
+            "Each triple should contain a subject, predicate, and object. If the statement contains complex relations, "
             "you may need to represent them as extended triples with additional attributes. Please provide the extracted facts in JSON format.\n"
             "In the JSON standard, property names must be enclosed in double quotes, and each pair of property and value must be separated by a comma. "
             "Make sure to escape double quotes in string values. For example, \"key\": \"value\". "
@@ -70,7 +71,7 @@ class FLEEK:
             # insert right before the latest message
             messages.insert(-1, example)
         
-        response = self.llm.get_response(messages, max_tokens=2048, json_mode=False)[-1]
+        response = self.llm.get_response(messages, max_tokens=2048, json_mode=True)[-1]
         # print(f"DEBUG: extract_facts - response: {response}")
 
         return self.parse_json(response)
@@ -369,16 +370,44 @@ class FLEEK:
 
     def get_hallucination_score(self, response: tuple) -> List[str]:
         """
-        Processes a given sentence through the complete FLEEK methodology: fact extraction, question generation, evidence retrieval, and verification.
+        Splits a given response into sentences and processes each sentence through the complete FLEEK methodology: fact extraction, question generation, evidence retrieval, and verification.
         
         Args:
-            response (tuple): The response tuple containing tokens, logprobs, linear probabilities, and the complete response string. Only the string is used here.
-            
+            response (tuple): The response tuple containing tokens, logprobs, linear probabilities, and the complete response string.
+
         Returns:
-            List[str]: The verification results for each fact extracted from the sentence.
+            Dict: A dictionary with sentences as keys and their hallucination scores as values.
         """
+        # with splitting into sentences
+        # sentences = split_into_sentences_spacy(response[-1])
+        # response_scores = []
+
+        # for sentence in sentences:
+        #     facts = self.extract_facts(sentence)
+        #     print(f"DEBUG: get_hallucination_score - facts:")
+        #     print_json(facts)
+        #     questions = self.generate_questions(facts)
+        #     print(f"DEBUG: get_hallucination_score - questions:")
+        #     print_json(questions)
+        #     search_results = self.retrieve_evidence_web_search(questions, "advanced", max_results=10)
+        #     print(f"DEBUG: get_hallucination_score - search_results:")
+        #     print_json(search_results)
+        #     verification_results = self.verify_facts(facts, search_results)
+        #     print(f"DEBUG: get_hallucination_score - verification_results:")
+        #     print_json(verification_results)
+        #     response_scores.append(verification_results)
+
+        # without splitting into sentences
         facts = self.extract_facts(response[-1])
+        print(f"DEBUG: get_hallucination_score - facts:")
+        print_json(facts)
         questions = self.generate_questions(facts)
-        search_results = self.retrieve_evidence_web_search(questions)
+        print(f"DEBUG: get_hallucination_score - questions:")
+        print_json(questions)
+        search_results = self.retrieve_evidence_web_search(questions, "advanced", max_results=10)
+        print(f"DEBUG: get_hallucination_score - search_results:")
+        print_json(search_results)
         verification_results = self.verify_facts(facts, search_results)
-        return verification_results
+        response_scores = verification_results
+
+        return response_scores
