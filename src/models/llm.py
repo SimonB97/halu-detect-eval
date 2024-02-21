@@ -81,6 +81,7 @@ class TogetherAILlm(BaseLlm):
             linear_probabilities = None
 
         return tokens, logprobs, linear_probabilities, full_text
+    
         # TODO: Not sure on which scale originally returned logprobs are!!! (seems to be 1 (highest) to -1 (lowest) but not sure)
             
         
@@ -147,66 +148,7 @@ class OpenAILlm(BaseLlm):
                 logprobs = None
                 linear_probabilities = None
         except KeyError:
-            print(response.json())
+            print(f"Error in response: {response.json()}")
             raise KeyError
 
         return tokens, logprobs, linear_probabilities, full_text
-
-
-
-if __name__ == "__main__":
-    # Example usage
-    together_bearer_token = os.getenv("TOGETHER_AUTH_BEARER_TOKEN")
-    openai_api_key = os.getenv("OPENAI_API_KEY")
-
-    message = "What is the capital of France?"
-
-    llm = OpenAILlm(openai_api_key, "gpt-3.5-turbo")
-    oai_response = llm.get_response(message, return_logprobs=True, max_tokens=8)
-    np.set_printoptions(precision=7, suppress=True)
-
-    print("OpenAI response:\n- Tokens:", oai_response[0], "\n- Logprobs:", oai_response[1], "\n- Linear probabilities:", oai_response[2], "\n- Full text:", oai_response[3])
-    print(f"- Types: Logprobs: {type(oai_response[1][0])}, Linear probabilities: {type(oai_response[2][0])}")
-    print()
-
-    llm = TogetherAILlm(together_bearer_token, "mistralai/Mixtral-8x7B-Instruct-v0.1")
-    together_response = llm.get_response(message, return_logprobs=1, max_tokens=8)
-    print("TogetherAI response:\n- Tokens:", together_response[0], "\n- Logprobs:", together_response[1], "\n- Linear probabilities:", together_response[2], "\n- Full text:", together_response[3])
-    print(f"- Types: Logprobs: {type(together_response[1][0])}, Linear probabilities: {type(together_response[2][0])}")
-
-    # Plot linear probabilities and logprobs per token curve
-    import matplotlib.pyplot as plt
-    fig, ax = plt.subplots(2, 2, figsize=(20, 10))
-
-    tokens_oai = oai_response[0]
-    tokens_together = together_response[0]
-
-    ax[0, 0].plot(oai_response[1], label="OpenAI")
-    ax[0, 0].set_title("OpenAI Logprobs")
-    ax[0, 0].legend()
-    ax[0, 0].set_xticks(range(len(tokens_oai)))
-    ax[0, 0].set_xticklabels(tokens_oai, fontsize='small')
-    ax[0, 0].set_ylabel("Logprob")
-
-    ax[0, 1].plot(together_response[1], label="TogetherAI")
-    ax[0, 1].set_title("TogetherAI Logprobs")
-    ax[0, 1].legend()
-    ax[0, 1].set_xticks(range(len(tokens_together)))
-    ax[0, 1].set_xticklabels(tokens_together, fontsize='small')
-    ax[0, 1].set_ylabel("Logprob")
-
-    ax[1, 0].plot(oai_response[2], label="OpenAI")
-    ax[1, 0].set_title("OpenAI Linear probabilities")
-    ax[1, 0].legend()
-    ax[1, 0].set_xticks(range(len(tokens_oai)))
-    ax[1, 0].set_xticklabels(tokens_oai, fontsize='small')
-    ax[1, 0].set_ylabel("Linear probability")
-
-    ax[1, 1].plot(together_response[2], label="TogetherAI")
-    ax[1, 1].set_title("TogetherAI Linear probabilities")
-    ax[1, 1].legend()
-    ax[1, 1].set_xticks(range(len(tokens_together)))
-    ax[1, 1].set_xticklabels(tokens_together, fontsize='small')
-    ax[1, 1].set_ylabel("Linear probability")
-
-    # plt.show()

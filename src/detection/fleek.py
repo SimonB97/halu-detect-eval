@@ -397,13 +397,13 @@ class FLEEK:
         # without splitting into sentences
         facts = self.extract_facts(response[-1])
         # print(f"DEBUG: get_hallucination_score - facts:")
-        print_json(facts)
+        # print_json(facts)
         questions = self.generate_questions(facts)
         # print(f"DEBUG: get_hallucination_score - questions:")
-        print_json(questions)
+        # print_json(questions)
         search_results = self.retrieve_evidence_web_search(questions, "advanced", max_results=10)
         # print(f"DEBUG: get_hallucination_score - search_results:")
-        print_json(search_results)
+        # print_json(search_results)
         verification_results = self.verify_facts(facts, search_results)
         # return as dictionary
         # turn into dictionary with one score
