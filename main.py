@@ -10,6 +10,8 @@ from ratelimit import limits, sleep_and_retry
 import multiprocessing
 import datetime
 import numpy as np
+import time
+import logging
 
 
 # 50 calls per second
@@ -150,17 +152,22 @@ if __name__ == "__main__":
     # Load LLMs
     DEBUG = False  # use to display api request details
     llms = {
-        # "openai": OpenAILlm(openai_api_key, "gpt-3.5-turbo", debug=DEBUG),
-        "togetherai": TogetherAILlm(together_bearer_token, "mistralai/Mistral-7B-Instruct-v0.1", debug=DEBUG)
-        # "togetherai": TogetherAILlm(together_bearer_token, "mistralai/Mixtral-8x7B-Instruct-v0.1", debug=DEBUG)
+            # "openai": OpenAILlm(openai_api_key, "gpt-3.5-turbo", debug=DEBUG),
+            "togetherai": TogetherAILlm(together_bearer_token, "mistralai/Mistral-7B-Instruct-v0.1", debug=DEBUG)
+            # "togetherai": TogetherAILlm(together_bearer_token, "mistralai/Mixtral-8x7B-Instruct-v0.1", debug=DEBUG)
     }
+    
+    # Set up logging
+    logging.basicConfig(filename='app.log', filemode='w', format='%(name)s - %(levelname)s - %(message)s', level=logging.INFO)
 
-     # Load datasets
+    # Load datasets
+    start_time = time.time()
     RANGE = 2
     datasets = load_datasets()
     prepared_data = prepare_data(datasets)
     nqopen = prepared_data["nqopen"].iloc[:RANGE]
     xsum = prepared_data["xsum"].iloc[:RANGE]
+    logging.info(f"Time taken to load datasets: {time.time() - start_time} seconds")
 
     # Get LLM answers  
     OVERWRITE = True
@@ -175,10 +182,13 @@ if __name__ == "__main__":
             }
             # if the csvs already exist, skip the LLM calls and just load the data
             if os.path.exists("results/" + answers_paths["nqopen"]) and not OVERWRITE:
+                start_time = time.time()
                 print(f"Loading {llm_name} NQ Open answers from csv...")
                 nqopen_answers = pd.read_csv("results/" + answers_paths["nqopen"])
                 csv_loaded_triggers["nqopen"] = True
+                logging.info(f"Time taken to load NQ Open answers: {time.time() - start_time} seconds")
             else:
+                start_time = time.time()
                 print(f"Generating {llm_name} NQ Open answers...")
                 nqopen_llm_answers = evaluation.get_llm_answers(
                     data=nqopen,
@@ -191,11 +201,15 @@ if __name__ == "__main__":
                 # strip nqopen answers from anything outside the first set of square brackets
                 nqopen_llm_answers = [(answer[0], answer[1], answer[2], answer[-1].split('[\'')[1].split('\']')[0].replace('"', '')) for answer in nqopen_llm_answers]
                 nqopen_answers = evaluation.create_answers_df(nqopen, nqopen_llm_answers)
+                logging.info(f"Time taken to generate NQ Open answers: {time.time() - start_time} seconds")
             if os.path.exists("results/" + answers_paths["xsum"]) and not OVERWRITE:
+                start_time = time.time()
                 print(f"Loading {llm_name} XSUM answers from csv...")
                 xsum_answers = pd.read_csv("results/" + answers_paths["xsum"])
                 csv_loaded_triggers["xsum"] = True
+                logging.info(f"Time taken to load XSUM answers: {time.time() - start_time} seconds")
             else:
+                start_time = time.time()
                 print(f"Generating {llm_name} XSUM answers...")
                 xsum_llm_answers = evaluation.get_llm_answers(
                     data=xsum,
@@ -206,6 +220,7 @@ if __name__ == "__main__":
                     **evaluation.get_XSUM_messages()
                 )
                 xsum_answers = evaluation.create_answers_df(xsum, xsum_llm_answers)
+                logging.info(f"Time taken to generate XSUM answers: {time.time() - start_time} seconds")
 
             # Save answers
             for dataset, path in answers_paths.items():
@@ -217,9 +232,15 @@ if __name__ == "__main__":
                     xsum_answers.to_csv("results/" + path, index=False)
 
             # Get hallucination scores
-            detection_methods = ["lbhd", "lm_v_lm", "fleek"]
+            detection_methods = [
+                "lbhd", 
+                # "lm_v_lm", 
+                # "fleek"
+            ]
+            start_time = time.time()
             nqopen_scores = evaluation.get_hallucination_scores(pool, nqopen_answers, detection_methods, parallel=False)
             xsum_scores = evaluation.get_hallucination_scores(pool, xsum_answers, detection_methods, parallel=False)
+            logging.info(f"Time taken to get hallucination scores: {time.time() - start_time} seconds")
 
             # Save scores
             scores_paths = {

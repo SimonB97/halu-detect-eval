@@ -1,0 +1,4 @@
+root - INFO - Time taken to load datasets: 12.833671569824219 seconds
+root - INFO - Time taken to generate NQ Open answers: 11.045118808746338 seconds
+root - INFO - Time taken to generate XSUM answers: 5.7387375831604 seconds
+root - INFO - Time taken to get hallucination scores: 4.881711721420288 seconds
