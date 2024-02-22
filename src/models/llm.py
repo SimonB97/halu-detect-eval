@@ -4,6 +4,7 @@ import requests
 from dotenv import load_dotenv
 from abc import ABC, abstractmethod
 import numpy as np
+import json
 
 load_dotenv()
 
@@ -67,7 +68,16 @@ class TogetherAILlm(BaseLlm):
         }
         if self.debug: print("DEBUG: TogetherAI request:"), print_json(payload)
         
-        response = requests.post(self.url, json=payload, headers=headers)
+        try:
+            response = requests.post(self.url, json=payload, headers=headers)
+            response.raise_for_status()  # This will raise an HTTPError if the response contains an HTTP error status code
+            response_json = response.json()
+        except requests.exceptions.HTTPError as http_err:
+            print(f"HTTP error occurred: {http_err}")
+        except requests.exceptions.RequestException as err:
+            print(f"Other error occurred: {err}")
+        except json.JSONDecodeError:
+            print(f"Response could not be parsed as JSON: {response.text}")
         if self.debug: print("DEBUG: TogetherAI response:"), print_json(response.json())
 
         if return_logprobs:
@@ -138,7 +148,16 @@ class OpenAILlm(BaseLlm):
         }
         if self.debug: print("DEBUG: OpenAI request:"), print_json(payload)
         
-        response = requests.post(self.url, json=payload, headers=headers)
+        try:
+            response = requests.post(self.url, json=payload, headers=headers)
+            response.raise_for_status()  # This will raise an HTTPError if the response contains an HTTP error status code
+            response_json = response.json()
+        except requests.exceptions.HTTPError as http_err:
+            print(f"HTTP error occurred: {http_err}")
+        except requests.exceptions.RequestException as err:
+            print(f"Other error occurred: {err}")
+        except json.JSONDecodeError:
+            print(f"Response could not be parsed as JSON: {response.text}")
         if self.debug: print("DEBUG: OpenAI response:"), print_json(response.json())
 
         try:

@@ -124,14 +124,14 @@ class Evaluation:
 
 
 if __name__ == "__main__":
-    together_bearer_token = os.getenv("TOGETHER_BEARER_TOKEN")
+    together_bearer_token = os.getenv("TOGETHER_AUTH_BEARER_TOKEN")
     openai_api_key = os.getenv("OPENAI_API_KEY")
 
     DEBUG = True
 
     llms = {
-        "openai": OpenAILlm(openai_api_key, "gpt-3.5-turbo", debug=DEBUG),
-        "togetherai": TogetherAILlm(together_bearer_token, "mistralai/Mistral-7B-Instruct-v0.1", debug=DEBUG)
+        # "openai": OpenAILlm(openai_api_key, "gpt-3.5-turbo", debug=DEBUG),
+        "togetherai": TogetherAILlm(together_bearer_token, "mistralai/Mixtral-8x7B-Instruct-v0.1", debug=DEBUG)
     }
 
     with Pool() as pool:
