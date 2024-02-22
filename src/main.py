@@ -6,9 +6,9 @@ from datasets import load_dataset
 import pandas as pd
 import os
 from multiprocessing import Pool
-from ratelimit import RateLimiter
 from ratelimit import RateLimitException
 import time
+from ratelimit import limits, sleep_and_retry
 
 
 class Evaluation:
@@ -36,33 +36,44 @@ class Evaluation:
         return {"nqopen": nqopen, "xsum": xsum}
     
 
-    def get_llm_response(self, row, system_message=None, examples=None):
+    def get_llm_answers(self, data: pd.DataFrame, system_message: str = None, examples: list[dict] = None, parallel: bool = False, logprobs: bool = False):
+        if parallel:
+            with Pool() as p:
+                llm_answers = p.starmap(self.get_llm_response, [(row, system_message, examples, logprobs) for _, row in data.iterrows()])
+        else:
+            llm_answers = []
+            for index, row in data.iterrows():
+                llm_answers.append(self.get_llm_response(row, system_message, examples, logprobs))
+        return llm_answers
+
+
+    def get_llm_response(self, row, system_message=None, examples=None, logprobs=False):
         while True:
             try:
+                check_limit()  # check rate limit before making a call
                 if examples:
                     messages = examples.copy()
                     messages.append({"role": "user", "content": row["prompt"]})
-                    return self.llm.get_response(messages, system_message if system_message else None)[-1]
+                    return self.llm.get_response(messages, system_message if system_message else None, return_logprobs=logprobs)
                 else:
-                    return self.llm.get_response(row["prompt"], system_message if system_message else None)[-1]
+                    return self.llm.get_response(row["prompt"], system_message if system_message else None, return_logprobs=logprobs)
             except RateLimitException:
                 time.sleep(1)  # wait for 1 second before retrying
 
 
-    @RateLimiter(max_calls=50, period=1)  # 50 requests per second
-    @RateLimiter(max_calls=5000, period=60)  # 5000 requests per minute
-    def get_llm_answers(self, data: pd.DataFrame, system_message: str = None, examples: list[dict] = None, parallel: bool = False):
-        if parallel:
-            with Pool() as p:
-                llm_answers = p.starmap(self.get_llm_response, [(row, system_message, examples) for _, row in data.iterrows()])
-        else:
-            llm_answers = []
-            for index, row in data.iterrows():
-                llm_answers.append(self.get_llm_response(row, system_message, examples))
-        return llm_answers
 
 
 
+
+
+# 5000 calls per minute
+CALLS = 50
+RATE_LIMIT = 1
+
+@sleep_and_retry
+@limits(calls=CALLS, period=RATE_LIMIT)
+def check_limit():
+    ''' Empty function just to check for calls to API '''
 
 
 

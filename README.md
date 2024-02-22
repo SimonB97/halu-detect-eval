@@ -32,6 +32,8 @@
 - **WikiAQ**:
     - 0-shot answer generation
 
+- hardcoded ratelimit for api calls at 50 per second
+
 
 ## General Implementation Notes
 
