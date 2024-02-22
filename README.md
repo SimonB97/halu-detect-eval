@@ -12,7 +12,7 @@
 - **LM sv LM**:
     - prompts and inspiration from [github.com/maybenotime/PHD/LMvsLM_replicate](https://github.com/maybenotime/PHD/tree/main/LMvsLM_replicate)
     - 0 = true statement, 1 = hallucination, 0.5 = unsure
-    - currently hardcoded max turns to 5 (as in original paper)
+    - currently hardcoded max turns = 5 (as in original paper)
 
 - **FLEEK**:
     - only using web search (Tavily) for evidence retrieval
@@ -38,4 +38,7 @@
 ## General Implementation Notes
 
 **JSON Mode**:
-- used for FLEEK, not necessary but can improve robustness. Working with OpenAI models and some TogetherAI models (see [together.ai JSON docs](https://docs.together.ai/docs/json-mode))
+    - used for FLEEK, not necessary but can improve robustness. Working with OpenAI models and some TogetherAI models (see [together.ai JSON docs](https://docs.together.ai/docs/json-mode))
+
+**Results**:
+    - saved in `results` folder

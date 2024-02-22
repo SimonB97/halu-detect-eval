@@ -12,7 +12,7 @@ load_dotenv()
 class BaseLlm(ABC):
     def __init__(self, bearer_token: str, model: str, url: str = None, debug: bool = False):
         self.bearer_token = bearer_token
-        self.model = model
+        self.model = model  # model name, e.g. "mistralai/Mistral-7B-Instruct-v0.2" or "gpt-3.5-turbo"
         self.url = url
         self.debug = debug
 
