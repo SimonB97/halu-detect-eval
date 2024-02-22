@@ -12,7 +12,7 @@ import datetime
 import numpy as np
 
 
-# 5000 calls per minute
+# 50 calls per second
 CALLS = 50
 RATE_LIMIT = 1
 
@@ -113,30 +113,29 @@ class Evaluation:
             if method == "lbhd":
                 return lbhd.LBHD(self.llm).get_hallucination_score(response=row["llm_answer"])
             elif method == "lm_v_lm":
-                return lm_v_lm.LMvsLM(self.llm).get_hallucination_score(response=row["llm_answer"])
+                return lm_v_lm.LMvLM(self.llm, self.llm).get_hallucination_score(response=row["llm_answer"])
             elif method == "fleek":
-                return fleek.FLEEK(self.llm).get_hallucination_score(response=row["llm_answer"])
+                return fleek.FLEEK(self.llm, tavily_api_key).get_hallucination_score(response=row["llm_answer"])
 
         for method in detection:
             print(f"Calculating hallucination scores for {method}...")
             column_name = f"{method}_score"
             if column_name in data_with_scores.columns:
                 column_name += f"_{datetime.datetime.now().strftime('%Y%m%d%H%M%S')}"
-            data_with_scores[column_name] = np.nan
+            data_with_scores[column_name] = {}
             if parallel:
                 with multiprocessing.Pool(processes=pool) as p:
                     scores = p.starmap(calculate_score, [(method, row) for _, row in data_with_answers.iterrows()])
+                # print(f"DEBUG: get_hallucination_scores: scores: {scores}")
                 for index, score in zip(data_with_answers.index, scores):
                     data_with_scores.at[index, column_name] = score
             else:
                 for index, row in data_with_answers.iterrows():
                     score = calculate_score(method, row)
-                    data_with_scores.at[index, column_name] = score
+                    # print(f"DEBUG: get_hallucination_scores: score: {list(score.items())[0][1]['score']}\ntype: {type(list(score.items())[0][1])}")
+                    data_with_scores.at[index, column_name] = list(score.items())[0][1]["score"]
 
         return data_with_scores
-
-                
-
 
 
 
@@ -149,58 +148,73 @@ if __name__ == "__main__":
     tavily_api_key = os.getenv("TAVILY_API_KEY")  # needed for FLEEK web search
 
     # Load LLMs
-    DEBUG = False
+    DEBUG = False  # use to display api request details
     llms = {
         # "openai": OpenAILlm(openai_api_key, "gpt-3.5-turbo", debug=DEBUG),
-        "togetherai": TogetherAILlm(together_bearer_token, "mistralai/Mistral-7B-Instruct-v0.2", debug=DEBUG)
+        "togetherai": TogetherAILlm(together_bearer_token, "mistralai/Mistral-7B-Instruct-v0.1", debug=DEBUG)
         # "togetherai": TogetherAILlm(together_bearer_token, "mistralai/Mixtral-8x7B-Instruct-v0.1", debug=DEBUG)
     }
 
      # Load datasets
-    RANGE = 3
+    RANGE = 2
     datasets = load_datasets()
     prepared_data = prepare_data(datasets)
     nqopen = prepared_data["nqopen"].iloc[:RANGE]
     xsum = prepared_data["xsum"].iloc[:RANGE]
 
+    # Get LLM answers  
+    OVERWRITE = True
+    csv_loaded_triggers = {"nqopen": False, "xsum": False}
     with Pool() as pool:
         for llm_name, llm in llms.items():
             evaluation = Evaluation(llm)
 
-            # Get LLM answers            
-            nqopen_llm_answers = evaluation.get_llm_answers(
-                data=nqopen,
-                parallel=True, 
-                temperature=0.0, 
-                logprobs=True,
-                pool=pool,
-                **evaluation.get_NQopen_messages()
-            )
-            xsum_llm_answers = evaluation.get_llm_answers(
-                data=xsum,
-                parallel=True, 
-                temperature=0.0, 
-                logprobs=True,
-                pool=pool,
-                **evaluation.get_XSUM_messages()
-            )
-
-            # Create answers dataframe
-            nqopen_answers = evaluation.create_answers_df(nqopen, nqopen_llm_answers)
-            xsum_answers = evaluation.create_answers_df(xsum, xsum_llm_answers)
+            answers_paths = {
+                "nqopen": f"{llm_name}_nqopen_with_answers__{llm.model}.csv".replace("/", "_"),
+                "xsum": f"{llm_name}_xsum_with_answers__{llm.model}.csv".replace("/", "_")
+            }
+            # if the csvs already exist, skip the LLM calls and just load the data
+            if os.path.exists("results/" + answers_paths["nqopen"]) and not OVERWRITE:
+                print(f"Loading {llm_name} NQ Open answers from csv...")
+                nqopen_answers = pd.read_csv("results/" + answers_paths["nqopen"])
+                csv_loaded_triggers["nqopen"] = True
+            else:
+                print(f"Generating {llm_name} NQ Open answers...")
+                nqopen_llm_answers = evaluation.get_llm_answers(
+                    data=nqopen,
+                    parallel=True, 
+                    temperature=0.0, 
+                    logprobs=True,
+                    pool=pool,
+                    **evaluation.get_NQopen_messages()
+                )
+                # strip nqopen answers from anything outside the first set of square brackets
+                nqopen_llm_answers = [(answer[0], answer[1], answer[2], answer[-1].split('[\'')[1].split('\']')[0].replace('"', '')) for answer in nqopen_llm_answers]
+                nqopen_answers = evaluation.create_answers_df(nqopen, nqopen_llm_answers)
+            if os.path.exists("results/" + answers_paths["xsum"]) and not OVERWRITE:
+                print(f"Loading {llm_name} XSUM answers from csv...")
+                xsum_answers = pd.read_csv("results/" + answers_paths["xsum"])
+                csv_loaded_triggers["xsum"] = True
+            else:
+                print(f"Generating {llm_name} XSUM answers...")
+                xsum_llm_answers = evaluation.get_llm_answers(
+                    data=xsum,
+                    parallel=True, 
+                    temperature=0.0, 
+                    logprobs=True,
+                    pool=pool,
+                    **evaluation.get_XSUM_messages()
+                )
+                xsum_answers = evaluation.create_answers_df(xsum, xsum_llm_answers)
 
             # Save answers
-            answers_paths = {
-                "nqopen": f"results/{llm_name}_nqopen_with_answers__{llm.model}.csv".replace("/", "_"),
-                "xsum": f"results/{llm_name}_xsum_with_answers__{llm.model}.csv".replace("/", "_")
-            }
             for dataset, path in answers_paths.items():
-                if not os.path.exists(path):
-                    os.makedirs(path)
-                if dataset == "nqopen":
-                    nqopen_answers.to_csv(path, index=False)
-                elif dataset == "xsum":
-                    xsum_answers.to_csv(path, index=False)
+                if not os.path.exists("results/"):
+                    os.makedirs("results/")
+                if dataset == "nqopen" and not csv_loaded_triggers["nqopen"]:
+                    nqopen_answers.to_csv("results/" + path, index=False)
+                elif dataset == "xsum" and not csv_loaded_triggers["xsum"]:
+                    xsum_answers.to_csv("results/" + path, index=False)
 
             # Get hallucination scores
             detection_methods = ["lbhd", "lm_v_lm", "fleek"]
@@ -209,14 +223,12 @@ if __name__ == "__main__":
 
             # Save scores
             scores_paths = {
-                "nqopen": f"results/{llm_name}_nqopen_with_scores__{llm.model}.csv".replace("/", "_"),
-                "xsum": f"results/{llm_name}_xsum_with_scores__{llm.model}.csv".replace("/", "_")
+                "nqopen": f"{llm_name}_nqopen_with_scores__{llm.model}.csv".replace("/", "_"),
+                "xsum": f"{llm_name}_xsum_with_scores__{llm.model}.csv".replace("/", "_")
             }
             for dataset, path in scores_paths.items():
-                if not os.path.exists(path):
-                    os.makedirs(path)
                 if dataset == "nqopen":
-                    nqopen_scores.to_csv(path, index=False)
+                    nqopen_scores.to_csv("results/" + path, index=False)
                 elif dataset == "xsum":
-                    xsum_scores.to_csv(path, index=False)
+                    xsum_scores.to_csv("results/" + path, index=False)
             print(f"Results for {llm_name} saved in results directory.")

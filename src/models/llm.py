@@ -5,8 +5,18 @@ from dotenv import load_dotenv
 from abc import ABC, abstractmethod
 import numpy as np
 import json
+from ratelimit import limits, sleep_and_retry
 
 load_dotenv()
+
+# 50 calls per second
+CALLS = 50
+RATE_LIMIT = 1
+
+@sleep_and_retry
+@limits(calls=CALLS, period=RATE_LIMIT)
+def check_limit():
+    ''' Empty function just to check for calls to API '''
 
 
 class BaseLlm(ABC):
@@ -30,7 +40,7 @@ class TogetherAILlm(BaseLlm):
     def get_response(self, message: str | list[dict], system_message: str = None, max_tokens: int = 512,
                      temperature: float = 0.0, top_p: float = 1, repetition_penalty: float = 1, 
                      n: int = 1, return_logprobs: bool = False, json_mode: bool = False) -> tuple:
-
+        check_limit()
         if isinstance(message, list):
             messages = message
             if system_message is not None:
@@ -71,7 +81,6 @@ class TogetherAILlm(BaseLlm):
         try:
             response = requests.post(self.url, json=payload, headers=headers)
             response.raise_for_status()  # This will raise an HTTPError if the response contains an HTTP error status code
-            response_json = response.json()
         except requests.exceptions.HTTPError as http_err:
             print(f"HTTP error occurred: {http_err}")
         except requests.exceptions.RequestException as err:
@@ -109,7 +118,7 @@ class OpenAILlm(BaseLlm):
     def get_response(self, message: str | list[dict], system_message: str = None, max_tokens: int = 512,
                      temperature: float = 0.0, top_p: float = 1, repetition_penalty: float = 1, 
                      n: int = 1, return_logprobs: bool = False, json_mode: bool = False) -> tuple:
-        
+        check_limit()
         if isinstance(message, list):
             messages = message
             if system_message is not None:

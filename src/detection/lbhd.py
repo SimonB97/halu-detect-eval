@@ -4,6 +4,7 @@ from src.models.llm import BaseLlm
 from src.utils.utils import split_into_sentences_spacy
 import numpy as np
 import re
+import traceback
 
 class LBHD:
     def __init__(self, llm: BaseLlm):
@@ -26,19 +27,38 @@ class LBHD:
 
         for sentence in sentences:
             # print(f"Processing sentence: {sentence}")
-            key_concepts = self.identify_concepts(self.llm, sentence)
-            concept_probabilities = self.get_token_probabilities(key_concepts, response)
+            try:
+                key_concepts = self.identify_concepts(self.llm, sentence)
+            except Exception as e:
+                print(f"Error identifying concepts for sentence: {sentence}. Error: {str(e)}")
+                continue
+
+            try:
+                concept_probabilities = self.get_token_probabilities(key_concepts, response)
+            except Exception as e:
+                print(f"Error getting token probabilities for key concepts: {key_concepts}. Error: {str(e)}")
+                continue
 
             variants = variants if variants else self.possible_variants
             scores_per_concept = []
 
             for concept, probabilities in concept_probabilities.items():
-                scores = self.get_substring_score(variants, probabilities)
-                scores_per_concept.append({concept: scores})
+                try:
+                    scores = self.get_substring_score(variants, probabilities)
+                    scores_per_concept.append({concept: scores})
+                except Exception as e:
+                    print(f"Error getting substring score for concept: {concept}. Error: {str(e)}")
+                    continue
 
-            sentence_probabilities = self.get_token_probabilities([sentence], response)
-            sentence_scores = self.get_substring_score(variants, sentence_probabilities[sentence.strip().replace('.', '')])
-            
+            try:
+                sentence_probabilities = self.get_token_probabilities([sentence], response)
+                # print(f"DEBUG: Sentence probabilities: {list(sentence_probabilities.items())[0]}")
+                sentence_scores = self.get_substring_score(variants, list(sentence_probabilities.values())[0])
+            except Exception as e:
+                print(f"Error getting sentence scores for sentence: {sentence}. Error: {str(e)}")
+                traceback.print_exc()
+                continue
+
             response_scores[sentence] = {"score": dict(sentence_scores, **{"concepts": scores_per_concept})}
 
         return response_scores
@@ -81,14 +101,21 @@ class LBHD:
         prompt = prompt.format(statement=statement)
         response = llm.get_response(prompt, system_message)[-1]
 
+        # print(f"DEBUG: Concept identification response: {response}")
+
         # Remove brackets and any leading or trailing whitespace
         try:
             response = response.split("[")[1].split("]")[0].strip()
         except IndexError:
             print("Warning: No list found in response. Concept identification may be inaccurate.")
             response = response
+        try:
+            response = [item.strip() for item in response.split(",")]
+        except Exception as e:
+            print(f"Warning: Error occurred while splitting the response. Error: {str(e)}")
+            response = []
 
-        return response.split(",")
+        return response
 
 
     def get_token_probabilities(self, token_strings: list[str], response: tuple) -> dict:
@@ -115,7 +142,7 @@ class LBHD:
             # Find all possible sequences of tokens that match the string
             for i in range(len(tokens)):
                 for j in range(i, len(tokens)):
-                    sequence = ''.join(token.strip().replace('.', '').replace(',', '') for token in tokens[i:j+1])
+                    sequence = ''.join(token.strip().replace('.', '').replace(',', '').replace('"', '') for token in tokens[i:j+1])
                     # print(f"Comparing '{string}' with '{sequence}'")
                     if sequence == string:
                         string_tokens = tokens[i:j+1]
