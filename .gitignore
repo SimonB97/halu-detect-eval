@@ -1,3 +1,6 @@
-version https://git-lfs.github.com/spec/v1
-oid sha256:7ce1dd492d90c336773f832ebca3d74366b123134fa541b9af11e9dbbbe25cd0
-size 92
+.env
+scratch_pad.ipynb
+datasets/
+
+# exclude any __pycache__ directories
+**/__pycache__/
