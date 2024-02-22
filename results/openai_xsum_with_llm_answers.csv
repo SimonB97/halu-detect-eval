@@ -1,0 +1,63 @@
+prompt,answer,llm_answer
+"Summarize the following article in a single, short sentence:
+
+<article>
+The ex-Reading defender denied fraudulent trading charges relating to the Sodje Sports Foundation - a charity to raise money for Nigerian sport.
+Mr Sodje, 37, is jointly charged with elder brothers Efe, 44, Bright, 50 and Stephen, 42.
+Appearing at the Old Bailey earlier, all four denied the offence.
+The charge relates to offences which allegedly took place between 2008 and 2014.
+Sam, from Kent, Efe and Bright, of Greater Manchester, and Stephen, from Bexley, are due to stand trial in July.
+They were all released on bail.
+</article>",Former Premier League footballer Sam Sodje has appeared in court alongside three brothers accused of charity fraud.,"(['Ex', '-', 'Reading', ' defender', ' denies', ' fraudulent', ' trading', ' charges', ' linked', ' to', ' charity', '.'], [-0.14483538, -0.041591953, -0.00012821102, -0.0023228412, -0.04719968, -0.0706557, -0.08254999, -0.04311806, -1.0523971, -0.0012409445, -0.03493641, -0.020541418], [0.8651647048022179, 0.9592611243477346, 0.9998717971986816, 0.9976798545079824, 0.9538969044382896, 0.9317826496722943, 0.9207654076435609, 0.9577983057238195, 0.34909991791652695, 0.9987598251532275, 0.9656668210583312, 0.9796681197400366], 'Ex-Reading defender denies fraudulent trading charges linked to charity.')"
+"Summarize the following article in a single, short sentence:
+
+<article>
+Voges was forced to retire hurt on 86 after suffering the injury while batting during the County Championship draw with Somerset on 4 June.
+Middlesex hope to have the Australian back for their T20 Blast game against Hampshire at Lord's on 3 August.
+The 37-year-old has scored 230 runs in four first-class games this season at an average of 57.50.
+""Losing Adam is naturally a blow as he contributes significantly to everything we do,"" director of cricket Angus Fraser said.
+""His absence, however, does give opportunities to other players who are desperate to play in the first XI.
+""In the past we have coped well without an overseas player and I expect us to do so now.""
+Defending county champions Middlesex are sixth in the Division One table, having drawn all four of their matches this season.
+Voges retired from international cricket in February with a Test batting average of 61.87 from 31 innings, second only to Australian great Sir Donald Bradman's career average of 99.94 from 52 Tests.
+</article>",Middlesex batsman Adam Voges will be out until August after suffering a torn calf muscle in his right leg.,"(['Adam', ' Vog', 'es', ' ret', 'ires', ' hurt', ',', ' Middle', 'sex', ' hopeful', ' for', ' T', '20', ' return', '.'], [-0.120126374, -4.723352e-06, -1.4617256e-05, -0.8868795, 0.0, -0.023099657, -1.1008167, -0.5195544, -1.0564331e-05, -0.8887266, -0.008102443, -0.30522805, -4.365741e-06, -0.3794814, -0.0050053285], [0.8868083601158212, 0.999995276659155, 0.9999853828508316, 0.41193920549447965, 1.0, 0.9771650975786202, 0.3325993388661299, 0.5947855253589476, 0.9999894357248024, 0.411179014878188, 0.9919302933169045, 0.7369552925723556, 0.9999956342685299, 0.684216151715954, 0.9950071772828125], 'Adam Voges retires hurt, Middlesex hopeful for T20 return.')"
+"Summarize the following article in a single, short sentence:
+
+<article>
+Seven photographs taken in the Norfolk countryside by photographer Josh Olins will appear in the June edition.
+In her first sitting for a magazine, the duchess is seen looking relaxed and wearing casual clothes.
+The shoot was in collaboration with the National Portrait Gallery, where two images are being displayed in the Vogue 100: A Century of Style exhibition.
+The duchess, who has a keen interest in photography, has been patron of the National Portrait Gallery since 2012.
+Nicholas Cullinan, director of the National Portrait Gallery, said: ""Josh has captured the duchess exactly as she is - full of life, with a great sense of humour, thoughtful and intelligent, and in fact, very beautiful.""
+He said the images also encapsulated what Vogue had done over the past 100 years - ""to pair the best photographers with the great personalities of the day, in order to reflect broader shifts in culture and society"".
+Alexandra Shulman, editor-in-chief of British Vogue, said: ""To be able to publish a photographic shoot with the Duchess of Cambridge has been one of my greatest ambitions for the magazine.""
+The collaboration for the June edition had resulted in ""a true celebration of our centenary as well as a fitting tribute to a young woman whose interest in both photography and the countryside is well known"", she said.
+Other royal portraits to have featured in the fashion magazine include Diana, Princess of Wales - who graced the cover four times - and Princess Anne.
+The duchess is to visit the exhibition at the National Portrait Gallery on Wednesday, Kensington Palace said.
+</article>",The Duchess of Cambridge will feature on the cover of British Vogue to mark the magazine's centenary.,"(['Phot', 'ographer', ' captures', ' Duchess', ' of', ' Cambridge', ' in', ' Norfolk', ' countryside', ' for', ' Vogue', '.'], [-0.6655049, -0.01922706, -0.40648323, -0.07251481, -0.0037080387, -9.651017e-05, -0.32506302, -0.3723776, -0.09183425, -0.3325431, -0.04582259, -0.048607122], [0.5140139365417972, 0.9809566009478621, 0.6659882641456064, 0.9300519724885684, 0.9962988275860604, 0.9999034944869566, 0.7224818214029816, 0.6890939915007308, 0.9122563435034806, 0.7170977612844207, 0.9552114112157583, 0.9525552942120686], 'Photographer captures Duchess of Cambridge in Norfolk countryside for Vogue.')"
+"Summarize the following article in a single, short sentence:
+
+<article>
+Chris Poole - known as ""moot"" online - created the site in 2003.
+It has gone on to be closely associated with offensive and often illegal activity, including instances where the images of child abuse were shared.
+It was widely credited as being the first place where leaked images of nude celebrities were posted following 2014's well-publicised security breach affecting Apple's iCloud service. That incident prompted a policy change on the site.
+However, 4chan has also been the rallying point for many instances of online activism from the likes of Anonymous, the loosely organized hacktivism group.
+Mr Poole shared news of his new position on blogging site Tumblr.
+""When meeting with current and former Googlers, I continually find myself drawn to their intelligence, passion, and enthusiasm - as well as a universal desire to share it with others.""
+""I'm also impressed by Google's commitment to enabling these same talented people to tackle some of the world's most interesting and important problems.
+He added: ""I can't wait to contribute my own experience from a dozen years of building online communities, and to begin the next chapter of my career at such an incredible company.""
+Mr Poole stepped down as the administrator of 4chan in January 2015. Now he is expected to turn his attentions to Google's social networking efforts.
+His arrival was welcomed by Bradley Horowitz, the head of ""streams, photos and sharing"" at the search giant's floundering social network, Google+.
+""I'm thrilled he's joining our team here at Google,"" Mr Horowitz said.
+""Welcome Chris!ï»¿""
+Several commentators described the appointment as ""unexpected"" but noted that Mr Poole's expertise with social media could prove useful to the search firm.
+Follow Dave Lee on Twitter @DaveLeeBBC and on Facebook
+</article>",Google has hired the creator of one of the web's most notorious forums - 4chan.,"(['Chris', ' Po', 'ole', ',', ' creator', ' of', ' ', '4', 'chan', ',', ' joins', ' Google', ' for', ' social', ' networking', '.'], [-0.11292975, -0.00024608144, -4.3202e-07, -0.057789963, -1.0114993, -4.4179764e-05, -0.069744565, -1.1279553e-05, -0.00015705463, -0.012051823, -0.30505487, -9.627177e-05, -0.65980375, -0.07859958, -0.2837838, -0.5079191], [0.8932134061538175, 0.9997539488355541, 0.9999995679800934, 0.9438481696570798, 0.3636733152149532, 0.9999558212119114, 0.9326320163418941, 0.9999887205106139, 0.9998429577024328, 0.9880205093483262, 0.7370829295416895, 0.9999037328639782, 0.5169527765197667, 0.9244100026000358, 0.7529294104491245, 0.6017464510808969], 'Chris Poole, creator of 4chan, joins Google for social networking.')"
+"Summarize the following article in a single, short sentence:
+
+<article>
+Four police officers were injured in the incident on Friday night.
+A man, aged 19, and a boy, aged 16, have been charged with six counts of aggravated vehicle taking.
+They are due to appear before Belfast Magistrates' Court on Monday.
+The 19-year-old man has also been charged with driving while disqualified and using a motor vehicle without insurance.
+</article>",Two teenagers have been charged in connection with an incident in west Belfast in which a car collided with two police vehicles.,"(['Two', ' suspects', ' charged', ' after', ' injuring', ' four', ' police', ' officers', ' in', ' Belfast', '.'], [-0.1263018, -0.5455233, -0.06344033, -0.14194185, -0.08615833, -0.3405038, -0.22584099, -0.00015288251, -0.1971355, -0.8357735, -0.41827562], [0.8813488155687863, 0.5795384315135526, 0.9385301197221186, 0.8676717101289041, 0.9174489600262195, 0.7114118231876275, 0.7978449569063788, 0.9998471291759354, 0.8210793695201363, 0.433539009282183, 0.6581807956318305], 'Two suspects charged after injuring four police officers in Belfast.')"
