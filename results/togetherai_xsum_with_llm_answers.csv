@@ -1,0 +1,62 @@
+prompt,answer,llm_answer
+"Summarize the following article in a single, short sentence:
+
+<article>
+The ex-Reading defender denied fraudulent trading charges relating to the Sodje Sports Foundation - a charity to raise money for Nigerian sport.
+Mr Sodje, 37, is jointly charged with elder brothers Efe, 44, Bright, 50 and Stephen, 42.
+Appearing at the Old Bailey earlier, all four denied the offence.
+The charge relates to offences which allegedly took place between 2008 and 2014.
+Sam, from Kent, Efe and Bright, of Greater Manchester, and Stephen, from Bexley, are due to stand trial in July.
+They were all released on bail.
+</article>",Former Premier League footballer Sam Sodje has appeared in court alongside three brothers accused of charity fraud.,"([' Four', ' former', ' football', ' players', ',', ' including', ' Mr', '.', ' S', 'od', 'je', ',', ' were', ' charged', ' with', ' fraud', 'ulent', ' trading', ' related', ' to', ' a', ' Niger', 'ian', ' sports', ' charity', ' between', ' ', '2', '0', '0', '8', ' and', ' ', '2', '0', '1', '4', ' and', ' all', ' denied', ' the', ' offense', '.', '</s>'], array([-1.12370477, -3.28732826, -2.20629884, -0.76710492, -0.69315254,
+       -0.69570248, -1.29623587, -0.69341758, -0.69316721, -0.69314742,
+       -0.69314718, -0.79266542, -0.86174498, -0.70049835, -0.70364675,
+       -0.70152877, -0.69509744, -0.69314861, -0.7727729 , -0.69314873,
+       -0.7430152 , -0.70441804, -0.69314718, -1.88321971, -0.69324339,
+       -0.76474179, -0.69314718, -0.69314718, -0.69314718, -0.69314718,
+       -0.6931473 , -0.69350487, -0.69314718, -0.69314718, -0.69314718,
+       -0.69314718, -0.69314718, -0.94659138, -1.21939055, -0.72241031,
+       -0.69315767, -0.79502797, -1.01932105, -0.72245745]), [0.32507324000000004, 0.037353515000000004, 0.11010742000000001, 0.46435547, 0.499997317791, 0.49872398375, 0.27355957, 0.499864816665, 0.49998998642, 0.49999988079071, 0.5, 0.45263672, 0.422424315, 0.4963378906, 0.4947776795, 0.495826721, 0.4990258217, 0.49999928474425, 0.461730957, 0.4999992251396, 0.47567749, 0.4943962095, 0.5, 0.1520996, 0.49995189905, 0.4654541, 0.5, 0.5, 0.5, 0.5, 0.499999940395355, 0.499821186065, 0.5, 0.5, 0.5, 0.5, 0.5, 0.388061525, 0.29541015000000004, 0.4855804445, 0.49999475479125, 0.451568605, 0.36083984999999996, 0.485557556], ' Four former football players, including Mr. Sodje, were charged with fraudulent trading related to a Nigerian sports charity between 2008 and 2014 and all denied the offense.</s>')"
+"Summarize the following article in a single, short sentence:
+
+<article>
+Voges was forced to retire hurt on 86 after suffering the injury while batting during the County Championship draw with Somerset on 4 June.
+Middlesex hope to have the Australian back for their T20 Blast game against Hampshire at Lord's on 3 August.
+The 37-year-old has scored 230 runs in four first-class games this season at an average of 57.50.
+""Losing Adam is naturally a blow as he contributes significantly to everything we do,"" director of cricket Angus Fraser said.
+""His absence, however, does give opportunities to other players who are desperate to play in the first XI.
+""In the past we have coped well without an overseas player and I expect us to do so now.""
+Defending county champions Middlesex are sixth in the Division One table, having drawn all four of their matches this season.
+Voges retired from international cricket in February with a Test batting average of 61.87 from 31 innings, second only to Australian great Sir Donald Bradman's career average of 99.94 from 52 Tests.
+</article>",Middlesex batsman Adam Voges will be out until August after suffering a torn calf muscle in his right leg.,"([' M', 'idd', 'les', 'ex', ' face', ' challenges', ' without', ' injured', ' Adam', ' V', 'og', 'es', ' (', '8', '6', ' runs', ' in', ' ', '4', ' games', ',', ' ', '5', '7', '.', '5', '0', ' av', 'g', '),', ' but', ' see', ' opportunities', ' for', ' other', ' players', ' as', ' they', ' cope', ' without', ' their', ' top', ' sc', 'orer', ' in', ' Division', ' One', '.', '</s>'], array([-0.7091901 , -0.69315076, -0.69314837, -0.69315743, -2.60403349,
+       -0.75885826, -0.72259887, -1.44150156, -1.63440527, -0.69315362,
+       -0.69314742, -0.69314718, -0.72027577, -1.17969312, -0.69314802,
+       -0.69331027, -0.70439489, -0.69351608, -0.69316244, -0.72148374,
+       -6.37185565, -0.70552202, -0.69324446, -0.69314933, -0.69314718,
+       -0.6931473 , -0.69325746, -0.72691404, -0.6931479 , -1.23689828,
+       -0.76953953, -0.78681686, -0.71542724, -0.69315982, -1.41001089,
+       -0.69315171, -0.84299399, -0.73591911, -0.73416883, -0.71952349,
+       -1.69370089, -1.61580579, -2.41513282, -0.69314766, -0.92912914,
+       -0.73958873, -0.69320571, -0.69455293, -0.69318354]), [0.4920425415, 0.49999821186065, 0.49999940395355, 0.4999948740005, 0.0739746, 0.468200685, 0.4854888915, 0.236572265, 0.19506835, 0.4999967813492, 0.49999988079071, 0.5, 0.48661804200000003, 0.30737305000000004, 0.4999995827675, 0.499918460845, 0.494407654, 0.49981558323, 0.4999923706055, 0.4860305785, 0.0017089849999999962, 0.493850708, 0.49995136261, 0.4999989271164, 0.5, 0.499999940395355, 0.499944865705, 0.4833984375, 0.49999964237213, 0.29028319999999996, 0.46322631999999997, 0.455291748, 0.4889831545, 0.4999936819075, 0.244140625, 0.4999977350235, 0.43041992, 0.4790649415, 0.479904175, 0.486984253, 0.1838379, 0.19873047, 0.08935546999999999, 0.49999976158142, 0.39489746000000003, 0.47731018000000003, 0.49997073412, 0.49929761885, 0.4999818205835], ' Middlesex face challenges without injured Adam Voges (86 runs in 4 games, 57.50 avg), but see opportunities for other players as they cope without their top scorer in Division One.</s>')"
+"Summarize the following article in a single, short sentence:
+
+<article>
+Seven photographs taken in the Norfolk countryside by photographer Josh Olins will appear in the June edition.
+In her first sitting for a magazine, the duchess is seen looking relaxed and wearing casual clothes.
+The shoot was in collaboration with the National Portrait Gallery, where two images are being displayed in the Vogue 100: A Century of Style exhibition.
+The duchess, who has a keen interest in photography, has been patron of the National Portrait Gallery since 2012.
+Nicholas Cullinan, director of the National Portrait Gallery, said: ""Josh has captured the duchess exactly as she is - full of life, with a great sense of humour, thoughtful and intelligent, and in fact, very beautiful.""
+He said the images also encapsulated what Vogue had done over the past 100 years - ""to pair the best photographers with the great personalities of the day, in order to reflect broader shifts in culture and society"".
+Alexandra Shulman, editor-in-chief of British Vogue, said: ""To be able to publish a photographic shoot with the Duchess of Cambridge has been one of my greatest ambitions for the magazine.""
+The collaboration for the June edition had resulted in ""a true celebration of our centenary as well as a fitting tribute to a young woman whose interest in both photography and the countryside is well known"", she said.
+Other royal portraits to have featured in the fashion magazine include Diana, Princess of Wales - who graced the cover four times - and Princess Anne.
+The duchess is to visit the exhibition at the National Portrait Gallery on Wednesday, Kensington Palace said.
+</article>",The Duchess of Cambridge will feature on the cover of British Vogue to mark the magazine's centenary.,"([' The', ' Du', 'che', 'ss', ' of', ' Cambridge', ',', ' a', ' photography', ' patron', ' and', ' av', 'id', ' country', ' lover', ',', ' is', ' featured', ' in', ' V', 'ogue', ""'"", 's', ' June', ' edition', ',', ' captured', ' by', ' Josh', ' Ol', 'ins', ' in', ' collaboration', ' with', ' the', ' National', ' Port', 'rait', ' Gallery', '.', '</s>'], array([-0.9101451 , -0.70308408, -0.69315481, -0.69315171, -0.69314813,
+       -0.69316768, -0.83860771, -1.81347792, -1.54468582, -1.19208091,
+       -0.72903118, -2.98504756, -0.69316733,         nan, -1.07532596,
+       -0.69314718, -1.06288135, -0.69649445, -0.83311666, -1.49013692,
+       -0.69315612, -0.69924637, -0.69314718, -0.71108357, -0.69698832,
+       -2.08531814, -1.54011957, -1.12107959, -0.87923558, -0.69314849,
+       -0.69315278, -1.72883969, -2.43444377, -0.69314956, -0.69315696,
+       -0.69333948, -0.69320846, -0.69324088, -0.6931566 , -0.79246318,
+       -0.78367147]), [0.40246582, 0.4950561525, 0.49999618530275, 0.4999977350235, 0.49999952316285, 0.499989748001, 0.43231200999999997, 0.16308594999999998, 0.21337889999999998, 0.30358886500000004, 0.4823760985, 0.0505371, 0.499989926815, -0.046875, 0.341186525, 0.5, 0.345458985, 0.4983291626, 0.434692385, 0.22534179999999998, 0.4999955296515, 0.4969596863, 0.5, 0.491111755, 0.4980831146, 0.12426757999999999, 0.21435547, 0.325927735, 0.41510009999999997, 0.4999993443489, 0.4999971985817, 0.177490235, 0.087646485, 0.4999988079071, 0.499995112419, 0.49990385771, 0.4999693632125, 0.49995315075, 0.499995291233, 0.45272827, 0.456726075], "" The Duchess of Cambridge, a photography patron and avid country lover, is featured in Vogue's June edition, captured by Josh Olins in collaboration with the National Portrait Gallery.</s>"")"
