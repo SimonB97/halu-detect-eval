@@ -33,6 +33,7 @@
     - 0-shot answer generation
 
 - hardcoded ratelimit for api calls at 50 per second (for FLEEK, additional rate limit for web search = 10 per minute)
+- first 80 samples of each dataset's validation set used
 
 
 ## General Implementation Notes
