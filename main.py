@@ -121,10 +121,12 @@ class Evaluation:
 
         for method in detection:
             print(f"Calculating hallucination scores for {method}...")
+
             column_name = f"{method}_score"
             if column_name in data_with_scores.columns:
                 column_name += f"_{datetime.datetime.now().strftime('%Y%m%d%H%M%S')}"
             data_with_scores[column_name] = {}
+            start_time = time.time()
             if parallel:
                 with multiprocessing.Pool(processes=pool) as p:
                     scores = p.starmap(calculate_score, [(method, row) for _, row in data_with_answers.iterrows()])
@@ -136,6 +138,8 @@ class Evaluation:
                     score = calculate_score(method, row)
                     # print(f"DEBUG: get_hallucination_scores: score: {list(score.items())[0][1]['score']}\ntype: {type(list(score.items())[0][1])}")
                     data_with_scores.at[index, column_name] = list(score.items())[0][1]["score"]
+            
+            logging.info(f"Time taken to calculate hallucination scores for {method}: {time.time() - start_time} seconds")
 
         return data_with_scores
 
@@ -149,20 +153,27 @@ if __name__ == "__main__":
     openai_api_key = os.getenv("OPENAI_API_KEY")
     tavily_api_key = os.getenv("TAVILY_API_KEY")  # needed for FLEEK web search
 
+    # Set up detection methods
+    detection_methods = [
+                "lbhd", 
+                "lm_v_lm", 
+                "fleek"
+            ]
+
     # Load LLMs
     DEBUG = False  # use to display api request details
     llms = {
-            # "openai": OpenAILlm(openai_api_key, "gpt-3.5-turbo", debug=DEBUG),
-            "togetherai": TogetherAILlm(together_bearer_token, "mistralai/Mistral-7B-Instruct-v0.1", debug=DEBUG)
-            # "togetherai": TogetherAILlm(together_bearer_token, "mistralai/Mixtral-8x7B-Instruct-v0.1", debug=DEBUG)
+            "togetherai": TogetherAILlm(together_bearer_token, "mistralai/Mixtral-8x7B-Instruct-v0.1", debug=DEBUG),
+            "togetherai_2": TogetherAILlm(together_bearer_token, "mistralai/Mistral-7B-Instruct-v0.1", debug=DEBUG),
+            "openai": OpenAILlm(openai_api_key, "gpt-3.5-turbo", debug=DEBUG),
     }
     
     # Set up logging
-    logging.basicConfig(filename='app.log', filemode='w', format='%(name)s - %(levelname)s - %(message)s', level=logging.INFO)
+    logging.basicConfig(filename='app.log', filemode='w', format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
 
     # Load datasets
     start_time = time.time()
-    RANGE = 2
+    RANGE = 80   # minimum (RANGE * n_datasets * n_llms) requests made to web search API
     datasets = load_datasets()
     prepared_data = prepare_data(datasets)
     nqopen = prepared_data["nqopen"].iloc[:RANGE]
@@ -174,6 +185,8 @@ if __name__ == "__main__":
     csv_loaded_triggers = {"nqopen": False, "xsum": False}
     with Pool() as pool:
         for llm_name, llm in llms.items():
+            print(f"Processing LLM: {llm_name}...")
+            
             evaluation = Evaluation(llm)
 
             answers_paths = {
@@ -232,11 +245,6 @@ if __name__ == "__main__":
                     xsum_answers.to_csv("results/" + path, index=False)
 
             # Get hallucination scores
-            detection_methods = [
-                "lbhd", 
-                # "lm_v_lm", 
-                # "fleek"
-            ]
             start_time = time.time()
             nqopen_scores = evaluation.get_hallucination_scores(pool, nqopen_answers, detection_methods, parallel=False)
             xsum_scores = evaluation.get_hallucination_scores(pool, xsum_answers, detection_methods, parallel=False)

@@ -119,43 +119,36 @@ class LBHD:
 
 
     def get_token_probabilities(self, token_strings: list[str], response: tuple) -> dict:
-        """Map each string (a token-collection, in order and contigous) to its tokens and their corresponding probabilities.
-
-        Args:
-            token_strings (list[str]): The list of token-collections to map.
-            response (tuple): The response tuple containing tokens, attentions, probabilities, and other information.
-
-        Returns:
-            dict: The dictionary mapping each string to its tokens and probabilities.
-
-        """
         tokens, _, probabilities, _ = response
         string_probabilities = {}
 
         # Preprocess the concepts to match the tokenization format
-        token_strings = [string.replace(' ', '').replace('.', '').replace(',', '') for string in token_strings]
+        token_strings = [string.replace(' ', '').replace('.', '').replace(',', '').replace('"', '') for string in token_strings]
 
         for string in token_strings:
             string_tokens = []
             string_probs = []
+            closest_matches = []
 
             # Find all possible sequences of tokens that match the string
             for i in range(len(tokens)):
                 for j in range(i, len(tokens)):
                     sequence = ''.join(token.strip().replace('.', '').replace(',', '').replace('"', '') for token in tokens[i:j+1])
-                    # print(f"Comparing '{string}' with '{sequence}'")
                     if sequence == string:
                         string_tokens = tokens[i:j+1]
                         string_probs = probabilities[i:j+1]
-                        # print(f"Matched: {string} -> {dict(zip(string_tokens, string_probs))}")
+                    elif len(closest_matches) < 2:
+                        closest_matches.append(sequence)
+                    elif len(closest_matches) == 2:
+                        closest_matches.sort(key=lambda x: abs(len(x) - len(string)))
+                        if abs(len(sequence) - len(string)) < abs(len(closest_matches[0]) - len(string)):
+                            closest_matches[0] = sequence
 
             if string_tokens:
-                # concatenate the tokens to form the string back together
-                # print(f"DEBUG: Tokens: {tokens}")
-                # print(f"DEBUG: Concept tokens: {string_tokens}")
-                string = ''.join(string_tokens).strip().replace('.', '')
+                string = ''.join(string_tokens).strip().replace('.', '').replace(',', '').replace('"', '')
                 string_probabilities[string] = dict(zip(string_tokens, string_probs))
             else:
                 print(f"Warning: Concept '{string}' not found in response tokens.")
+                print(f"Closest matches: {closest_matches}")
 
         return string_probabilities
