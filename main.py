@@ -174,6 +174,17 @@ class Evaluation:
         return data_with_scores
 
 
+    def get_ground_truths(self, data: pd.DataFrame):
+
+        def calc_semantic_similarity(answer, llm_answer):
+            return 0.5  # TODO: implement semantic similarity calculation
+
+        print(f"Getting ground truth for {len(data)} answers...")
+        data_with_ground_truth = data.copy()
+        data_with_ground_truth["ground_truth"] = {}
+        for index, row in data.iterrows():
+            data_with_ground_truth.at[index, "ground_truth"] = calc_semantic_similarity(row["answer"], row["llm_answer"][-1])
+        return data_with_ground_truth
 
 
 
