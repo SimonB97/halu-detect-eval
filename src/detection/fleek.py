@@ -18,19 +18,14 @@ LLM_RATE_LIMIT = 1
 @limits(calls=LLM_CALLS, period=LLM_RATE_LIMIT)
 def check_llm_limit():
     ''' Empty function just to check for calls to API '''
-    raise RetryException("Retrying...")  # Raise custom exception to indicate retry
 
 # Search API: 20 calls per minute
-SEARCH_CALLS = 20
+SEARCH_CALLS = 10
 SEARCH_RATE_LIMIT = 60
 @sleep_and_retry
 @limits(calls=SEARCH_CALLS, period=SEARCH_RATE_LIMIT)
 def check_search_limit():
     ''' Empty function just to check for calls to API '''
-    raise RetryException("Retrying...")  # Raise custom exception to indicate retry
-
-class RetryException(Exception):
-    pass
 
 
 class FLEEK:
