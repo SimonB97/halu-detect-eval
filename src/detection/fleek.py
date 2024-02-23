@@ -57,12 +57,14 @@ class FLEEK:
             List[Dict]: A list of dictionaries representing the extracted facts.
         """
         system_message = (
-            "As an expert in JSON format, your task is to extract the facts from the given statement in the form of triples. "
-            "Each triple should contain a subject, predicate, and object. If the statement contains complex relations, "
-            "you may need to represent them as extended triples with additional attributes. Please provide the extracted facts in JSON format.\n"
+            "As an expert in JSON format, your task is to extract the facts from the given statement in the form of triples (flat or extended). "
+            "If the statement contains complex relations, you may need to represent them as extended triples with additional attributes. Please provide the extracted facts in JSON format.\n"
             "In the JSON standard, property names must be enclosed in double quotes, and each pair of property and value must be separated by a comma. "
             "Make sure to escape double quotes in string values. For example, \"key\": \"value\". "
-            "Also, each triple should be accessible by a unique key, such as 'flat1', 'flat2', 'extended1', etc. "
+            "Also, each triple should be accessible by a unique key, such as 'flat1', 'flat2', 'extended1', etc., and keys should NOT be leading with an underscore '_'.\n\n"
+            "For flat triples, use the following format: {'flat1': {'type': 'flat', 'subject': 'subject_name', 'predicate': 'predicate_relation', 'object': 'object_info'}}.\n"
+            "For extended triples, use the following format: {'extended1': {'type': 'extended', 'subject': 'subject_name', 'predicate': 'predicate_relation', 'attributes': [{'predicate_id': 'id', 'predicate_attribute': 'attribute_name', 'object': 'attribute_value'}, "
+            "{'predicate_id': 'id', 'predicate_attribute': 'attribute_name', 'object': 'attribute_value'}, ...]}}.\n\n"
             "End your JSON with the '</s>' token."
         )
         prompt_template = "Extract the facts from the given sentence: '{}'"
@@ -186,8 +188,8 @@ class FLEEK:
         try:
             prompt = prompt_template.format(subject=fact[0]['subject'], predicate=fact[0]['predicate'], object=fact[0]['object'])
         except KeyError as e:
-            logger.error(f"An Error occurred while formatting the attributes of the extended triple.\n  fact_details:\n{fact}\n  error: {e}")
-            raise ValueError("An Error occurred while formatting the attributes of the extended triple. Please check the logs for more information.")
+            logger.error(f"An Error occurred while formatting the attributes of the flat triple.\n  fact:\n{fact}\n  error: {e}")
+            raise ValueError("An Error occurred while formatting the attributes of the flat triple. Please check the logs for more information.")
         examples = [
             {'role': 'user', 'content': prompt_template.format(subject="Taylor Swift", predicate="birthdate", object="1989")},
             {'role': 'assistant', 'content': '[{"type": "Year", "question": "In which year was Taylor Swift born?"}]</s>'},
@@ -219,8 +221,6 @@ class FLEEK:
         Returns:
             str: The question generated for the fact.
         """
-        # Extract the first (and typically only) value from the fact dictionary, which contains the extended triple
-        # fact_details = list(fact.values())[0]
         fact_details = fact
         
         # Prepare the system message for guiding the LLM
@@ -235,8 +235,16 @@ class FLEEK:
         try:
             attributes_formatted = ", ".join([f"{attr['predicateAttribute']}: {attr['object']}" for attr in fact_details['attributes']])
         except KeyError as e:
-            logger.error(f"An Error occurred while formatting the attributes of the extended triple.\n  fact_details:\n{fact_details}\n  error: {e}")
-            raise ValueError("An Error occurred while formatting the attributes of the extended triple. Please check the logs for more information.")
+            try:
+                if e == "attributes":
+                    attributes_formatted = ", ".join([f"{attr['predicateAttribute']}: {attr['object']}" for attr in fact_details['_attributes']])
+                if e == "predicateAttribute":
+                    attributes_formatted = ", ".join([f"{attr['predicate_attribute']}: {attr['object']}" for attr in fact_details['attributes']])
+                if e == "object":
+                    attributes_formatted = ", ".join([f"{attr['predicateAttribute']}: {attr['_object']}" for attr in fact_details['attributes']])
+            except KeyError as e:
+                logger.error(f"An Error occurred while formatting the attributes of the extended triple.\n  fact_details:\n{fact_details}\n  error: {e}")
+                raise ValueError("An Error occurred while formatting the attributes of the extended triple. Please check the logs for more information.")
         prompt_template = (
             "Generate a question based on the extended fact:\n\nSubject: '{subject}'\nPredicate: '{predicate}'\nAttributes: {attributes}\n\n"
             "The question should be designed to elicit detailed information incorporating the context of the attributes and only that."
