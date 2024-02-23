@@ -165,9 +165,9 @@ if __name__ == "__main__":
     # Load LLMs
     DEBUG = False  # use to display api request details
     llms = {
-            "togetherai": TogetherAILlm(together_bearer_token, "mistralai/Mixtral-8x7B-Instruct-v0.1", debug=DEBUG),
-            "togetherai_2": TogetherAILlm(together_bearer_token, "mistralai/Mistral-7B-Instruct-v0.1", debug=DEBUG),
             "openai": OpenAILlm(openai_api_key, "gpt-3.5-turbo", debug=DEBUG),
+            # "togetherai": TogetherAILlm(together_bearer_token, "mistralai/Mixtral-8x7B-Instruct-v0.1", debug=DEBUG),
+            # "togetherai_2": TogetherAILlm(together_bearer_token, "mistralai/Mistral-7B-Instruct-v0.1", debug=DEBUG),
         }
     
     # Set up logging
@@ -192,8 +192,8 @@ if __name__ == "__main__":
             evaluation = Evaluation(llm)
 
             answers_paths = {
-                "nqopen": f"{llm_name}_nqopen_with_answers__{llm.model}".replace("/", "_").replace("\\", "_").replace(".", "") + ".csv",
-                "xsum": f"{llm_name}_xsum_with_answers__{llm.model}".replace("/", "_").replace("\\", "_").replace(".", "") + ".csv"
+                "nqopen": f"{llm_name}_nqopen_with_answers__{llm.model}".replace("/", "_").replace("\\", "_").replace(".", "-") + ".csv",
+                "xsum": f"{llm_name}_xsum_with_answers__{llm.model}".replace("/", "_").replace("\\", "_").replace(".", "-") + ".csv"
             }
             # if the csvs already exist, skip the LLM calls and just load the data
             if os.path.exists("results/" + answers_paths["nqopen"]) and not OVERWRITE:
@@ -254,8 +254,8 @@ if __name__ == "__main__":
 
             # Save scores
             scores_paths = {
-                "nqopen": f"{llm_name}_nqopen_with_scores__{llm.model}".replace("/", "_").replace("\\", "_").replace(".", "") + ".csv",
-                "xsum": f"{llm_name}_xsum_with_scores__{llm.model}".replace("/", "_").replace("\\", "_").replace(".", "") + ".csv"
+                "nqopen": f"{llm_name}_nqopen_with_scores__{llm.model}".replace("/", "_").replace("\\", "_").replace(".", "-") + ".csv",
+                "xsum": f"{llm_name}_xsum_with_scores__{llm.model}".replace("/", "_").replace("\\", "_").replace(".", "-") + ".csv"
             }
             for dataset, path in scores_paths.items():
                 if dataset == "nqopen":
