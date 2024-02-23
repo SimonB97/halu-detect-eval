@@ -1,6 +1,17 @@
 """LM vs LM (LMvLM) hallucination detection method."""
 
 from src.models.llm import BaseLlm
+from ratelimit import limits, sleep_and_retry
+
+
+# 50 calls per second
+CALLS = 50
+RATE_LIMIT = 1
+
+@sleep_and_retry
+@limits(calls=CALLS, period=RATE_LIMIT)
+def check_limit():
+    ''' Empty function just to check for calls to API '''
 
 
 class Examiner:
@@ -42,7 +53,7 @@ class Examiner:
         system_message = 'You are an expert at following guidelines for structuring text. Answer ONLY with "correct" or "incorrect".'
         messages = self.message_history
         messages.insert(-2, {"role": "system", "content": system_message})
-        response = self.llm.get_response(messages, max_tokens=50)[-1]
+        response = self.llm.get_response(messages, max_tokens=100)[-1]
         response_message = {"role": "assistant", "content": response}
         self.message_history.append(response_message)
         return self.message_history
@@ -57,7 +68,8 @@ class Examiner:
         return response
 
     def generate_response(self):
-        response = self.llm.get_response(self.message_history, max_tokens=256)[-1]
+        check_limit()  # Check for rate limit
+        response = self.llm.get_response(self.message_history, max_tokens=2048)[-1]
         return response
 
 
@@ -79,7 +91,8 @@ class Examinee:
 
 
     def generate_response(self):
-        response = self.llm.get_response(self.message_history, max_tokens=256)[-1]
+        check_limit()  # Check for rate limit
+        response = self.llm.get_response(self.message_history, max_tokens=2048)[-1]
         return response
 
 
@@ -89,7 +102,6 @@ class LMvLM:
         self.examiner_llm = examiner_llm
 
     def get_hallucination_score(self, response: tuple, variants: list[str] = None) -> dict:
-
         resp_text = response[-1]
         examiner = Examiner(resp_text, self.examiner_llm)
         examinee = Examinee(resp_text, self.examinee_llm)

@@ -23,6 +23,7 @@ RATE_LIMIT = 1
 def check_limit():
     ''' Empty function just to check for calls to API '''
 
+
 class Evaluation:
     def __init__(self, llm: BaseLlm):
         self.llm = llm
@@ -128,6 +129,7 @@ class Evaluation:
             data_with_scores[column_name] = {}
             start_time = time.time()
             if parallel:
+                # TODO: fix parallel processing
                 with multiprocessing.Pool(processes=pool) as p:
                     scores = p.starmap(calculate_score, [(method, row) for _, row in data_with_answers.iterrows()])
                 # print(f"DEBUG: get_hallucination_scores: scores: {scores}")
