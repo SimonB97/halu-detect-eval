@@ -31,6 +31,13 @@ def check_limit():
 class Evaluation:
     def __init__(self, llm: BaseLlm):
         self.llm = llm
+        self.durations = {
+            "detection": {
+                "lbhd": [],
+                "lm_v_lm": [],
+                "fleek": [],
+            },
+        }
     
 
     def get_llm_answers(self, pool, data: pd.DataFrame, system_message: str = None, examples: list[dict] = None, 
@@ -144,6 +151,7 @@ class Evaluation:
                 for index, row in data_with_answers.iterrows():
                     try:
                         score = calculate_score(method, row)
+                        score = list(score.items())[0][1]["score"]
                         if type(score) == bool:
                             score = 1 if score else 0  # convert boolean to int to indicate error with -1
                         if type(score) == str:
@@ -155,10 +163,13 @@ class Evaluation:
                             data_with_scores.at[index, column_name] = {"error": e}
                         elif col_type == int:
                             data_with_scores.at[index, column_name] = -1
-                    # print(f"DEBUG: get_hallucination_scores: score: {list(score.items())[0][1]['score']}\ntype: {type(list(score.items())[0][1])}")
-                    data_with_scores.at[index, column_name] = list(score.items())[0][1]["score"]
+                        else:
+                            data_with_scores.at[index, column_name] = col_type(-1)
+                
+                    data_with_scores.at[index, column_name] = score
             
             logging.info(f"Time taken to calculate hallucination scores for {method}: {time.time() - start_time} seconds")
+            self.durations["detection"][method].append(time.time() - start_time)
 
         return data_with_scores
 
@@ -182,22 +193,22 @@ if __name__ == "__main__":
     # Load LLMs
     DEBUG = False  # use to display api request details
     llms = {
-            "openai": OpenAILlm(openai_api_key, "gpt-3.5-turbo", debug=DEBUG),
+            # "openai": OpenAILlm(openai_api_key, "gpt-3.5-turbo", debug=DEBUG),
             # "togetherai": TogetherAILlm(together_bearer_token, "mistralai/Mixtral-8x7B-Instruct-v0.1", debug=DEBUG),
-            # "togetherai_2": TogetherAILlm(together_bearer_token, "mistralai/Mistral-7B-Instruct-v0.1", debug=DEBUG),
+            "togetherai_2": TogetherAILlm(together_bearer_token, "mistralai/Mistral-7B-Instruct-v0.1", debug=DEBUG),
         }
 
     # Load datasets
     start_time = time.time()
-    RANGE = 3   # minimum (RANGE * n_datasets * n_llms) requests made to web search API
+    RANGE = 2   # minimum (RANGE * n_datasets * n_llms) requests made to web search API
     datasets = load_datasets()
     prepared_data = prepare_data(datasets)
     nqopen = prepared_data["nqopen"].iloc[:RANGE]
     xsum = prepared_data["xsum"].iloc[:RANGE]
     logging.info(f"Time taken to load datasets: {time.time() - start_time} seconds")
 
-    # Get LLM answers  
-    OVERWRITE = True
+    # Run evaluation for each LLM
+    OVERWRITE = True  # set to True to overwrite existing csvs
     csv_loaded_triggers = {"nqopen": False, "xsum": False}
     with Pool() as pool:
         for llm_name, llm in llms.items():
@@ -270,6 +281,12 @@ if __name__ == "__main__":
                 logging.shutdown()
                 raise e
             logging.info(f"Time taken to get hallucination scores: {time.time() - start_time} seconds")
+            for method, times in evaluation.durations["detection"].items():
+                if times:  # avoid division by zero
+                    average_time = sum(times) / len(times)
+                    logging.info(f"Average time taken to calculate hallucination scores for {method}: {average_time} seconds")
+                else:
+                    logging.info(f"No time taken to calculate hallucination scores for {method}")
 
             # Save scores
             scores_paths = {
@@ -283,6 +300,7 @@ if __name__ == "__main__":
                     xsum_scores.to_csv("results/" + path, index=False)
             print(f"Results for {llm_name} saved in results directory.")
 
-
+            # Log durations
+            logging.info(f"Durations for {llm_name} ({llm.model}): {evaluation.durations}")
 
             logging.shutdown()

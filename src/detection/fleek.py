@@ -201,7 +201,7 @@ class FLEEK:
             messages.insert(-1, example)
 
         check_llm_limit()
-        response = self.llm.get_response(messages, max_tokens=2048)[-1]
+        response = self.llm.get_response(messages, max_tokens=2048, json_mode=True)[-1]
         response = response
         return self.parse_json(response)[0]['question']
 
@@ -238,7 +238,6 @@ class FLEEK:
                 if e == "object":
                     attributes_formatted = ", ".join([f"{attr['predicateAttribute']}: {attr['_object']}" for attr in fact_details['attributes']])
             except KeyError as e:
-                logger.error(f"An Error occurred while formatting the attributes of the extended triple.\n  fact_details:\n{fact_details}\n  error: {e}")
                 raise ValueError("An Error occurred while formatting the attributes of the extended triple. Please check the logs for more information.")
         prompt_template = (
             "Generate a question based on the extended fact:\n\nSubject: '{subject}'\nPredicate: '{predicate}'\nAttributes: {attributes}\n\n"
@@ -261,7 +260,7 @@ class FLEEK:
             messages.insert(-1, example)
         
         # Get the response from the language model
-        response = self.llm.get_response(messages, max_tokens=2048)[-1]#
+        response = self.llm.get_response(messages, max_tokens=2048, json_mode=True)[-1]#
         # print(f"DEBUG: generate_extended_triple_question - response: \"{response}\"")
         question = self.parse_json(response)[0]['question']
 
@@ -355,7 +354,7 @@ class FLEEK:
                 # print(f"DEBUG: verify_facts - prompt: {prompt}")
                 
                 # Use LLM to verify the evidence against the fact
-                response = self.llm.get_response(prompt, system_message, max_tokens=512, json_mode=True)[-1]
+                response = self.llm.get_response(prompt, system_message, max_tokens=2048, json_mode=True)[-1]
                 verification_result = self.parse_llm_response_for_verification(response)
                 
                 # Decision logic based on LLM response

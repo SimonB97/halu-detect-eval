@@ -32,7 +32,7 @@
 - **WikiAQ**:
     - 0-shot answer generation
 
-- hardcoded ratelimit for api calls at 50 per second
+- hardcoded ratelimit for api calls at 50 per second (for FLEEK, additional rate limit for web search = 10 per minute)
 
 
 ## General Implementation Notes
@@ -42,3 +42,7 @@
 
 **Results**:
     - saved in `results` folder
+    - saved after:
+        - answer generation
+        - hallucination detection
+        - 
