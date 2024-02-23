@@ -314,4 +314,7 @@ if __name__ == "__main__":
             # Log durations
             logging.info(f"Durations for {llm_name} ({llm.model}): {evaluation.durations}")
 
+
+            
+
             logging.shutdown()
