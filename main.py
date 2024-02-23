@@ -3,7 +3,7 @@ import logging
 # Set up logging
 logging.basicConfig(filename='app.log', filemode='w', format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
 
-from src.detection import lbhd, lm_v_lm, fleek
+from src.detection import lbhd, lm_v_lm, fleek, selfcheck_nli
 from src.models.llm import OpenAILlm, TogetherAILlm, BaseLlm
 from src.data.load_data import load_datasets, prepare_data
 import pandas as pd
@@ -15,6 +15,7 @@ from ratelimit import limits, sleep_and_retry
 import multiprocessing
 import datetime
 import time
+import json
 
 
 # 50 calls per second
@@ -27,7 +28,7 @@ def check_limit():
     ''' Empty function just to check for calls to API '''
 
 
-class Evaluation:
+class HallucinationDetection:
     def __init__(self, llm: BaseLlm, eval_llm: BaseLlm = None):
         self.llm = llm
         self.eval_llm = eval_llm  # used to retrieve ground truth labels
@@ -130,6 +131,12 @@ class Evaluation:
                 return lm_v_lm.LMvLM(self.llm, self.llm).get_hallucination_score(response=row["llm_answer"])
             elif method == "fleek":
                 return fleek.FLEEK(self.llm, tavily_api_key).get_hallucination_score(response=row["llm_answer"])
+            elif method == "selfcheck_nli":
+                samples = []
+                for col in row.index:
+                    if "llm_answer__" in col:
+                        samples.append(row[col])
+                return selfcheck_nli.SelfCheckNLI().get_hallucination_score(response=row["llm_answer"][-1], samples=samples)
 
 
         for method in detection:
@@ -182,7 +189,8 @@ class Evaluation:
                 "Based on the original task at hand, the ground truth answer and the given answer, please assess if the given answer deviates from the ground truth. "
                 "Focus on the factual correctness of the answer and not on the quality of the language used. "
                 "Provide your assessment in form of a valid JSON object with the following keys: "
-                "{'hallucination': bool} where bool is True if the answer is a hallucination and False if it is not. "
+                "{'hallucination': int} where int is 1 if the answer is a hallucination and 0 if it is not. "
+                "If the given answer cannot be assessed for factuality for whatever reason, indicate this by setting the value to -1."
             )
             if additional_instructs:
                 system_message += "\n" + additional_instructs
@@ -190,12 +198,14 @@ class Evaluation:
                 "Is the given answer a hallucination?\n\nPrompt: {prompt}\n\nGround truth: {answer}\n\nGiven answer: {llm_answer}\n\n"
             ).format(prompt=prompt, answer=answer, llm_answer=llm_answer)
 
-            return self.eval_llm.get_response(prompt, system_message)
+            response = self.eval_llm.get_response(prompt, system_message)[-1]
+            response_dict = json.loads(response)
+            return response_dict
             
 
             
-        print(f"Getting ground truth labels for {len(data)} answers using {self.eval_llm.model}...")
-        data_with_ground_truths = data.copy()
+        print(f"Getting ground truth labels for {len(list(data.values())[0])} answers using {self.eval_llm.model}...")
+        data_with_ground_truths = list(data.values())[0].copy()
         for dataset, df in data.items():
             if dataset == "nqopen":
                 additional_instructs = ("For this particular task, the instruction where to provide a sentence, whereas the ground truth is a list of entities. "
@@ -204,10 +214,10 @@ class Evaluation:
                 additional_instructs = ("For this particular task, the instruction was to provide a summary of the article in one sentence. "
                                         "Focus on the factual consistency of the given answer with the article and the ground truth summary.")
             for index, row in df.iterrows():
-                data_with_ground_truths.at[index, "ground_truth"] = evaluate_w_llm(row["prompt"], row["answer"], row["llm_answer"], additional_instructs)
+                data_with_ground_truths.at[index, "ground_truth"] = evaluate_w_llm(row["prompt"], row["answer"], row["llm_answer"], additional_instructs)["hallucination"]
         return data_with_ground_truths
                 
-                
+
 
 
 
@@ -221,7 +231,9 @@ if __name__ == "__main__":
     copilot_api_key = os.getenv("COPILOT_API_KEY")
 
     # Set up detection methods
+    n_samples = 4  # number of additional samples to use for selfcheck_nli
     detection_methods = [
+                "selfcheck_nli",
                 "fleek",
                 "lm_v_lm", 
                 "lbhd", 
@@ -230,8 +242,8 @@ if __name__ == "__main__":
     # Load LLMs
     DEBUG = False  # use to display api request details
     llms = {
-            # "openai": OpenAILlm(openai_api_key, "gpt-3.5-turbo", debug=DEBUG),
-            # "togetherai": TogetherAILlm(together_bearer_token, "mistralai/Mixtral-8x7B-Instruct-v0.1", debug=DEBUG),
+            "openai": OpenAILlm(openai_api_key, "gpt-3.5-turbo", debug=DEBUG),
+            "togetherai": TogetherAILlm(together_bearer_token, "mistralai/Mixtral-8x7B-Instruct-v0.1", debug=DEBUG),
             "togetherai_2": TogetherAILlm(together_bearer_token, "mistralai/Mistral-7B-Instruct-v0.1", debug=DEBUG),
         }
     eval_llm = OpenAILlm(copilot_api_key, "gpt-4", "http://192.168.2.109:8080/v1/chat/completions")  # use regular OpenAI API or custom endpoint
@@ -245,122 +257,132 @@ if __name__ == "__main__":
     xsum = prepared_data["xsum"].iloc[:RANGE]
     logging.info(f"Time taken to load datasets: {time.time() - start_time} seconds")
 
-    # Run evaluation for each LLM
+    # Run detection for each LLM
     OVERWRITE = True  # set to True to overwrite existing csvs
     csv_loaded_triggers = {"nqopen": False, "xsum": False}
     with Pool() as pool:
         for llm_name, llm in llms.items():
             print(f"\n--------\nProcessing LLM: {llm.model}...\n")
             
-            evaluation = Evaluation(llm, eval_llm)
+            detection = HallucinationDetection(llm, eval_llm)
 
-            answers_paths = {
-                "nqopen": f"{llm_name}_nqopen_with_answers__{llm.model}".replace("/", "_").replace("\\", "_").replace(".", "-") + ".csv",
-                "xsum": f"{llm_name}_xsum_with_answers__{llm.model}".replace("/", "_").replace("\\", "_").replace(".", "-") + ".csv"
-            }
-            # if the csvs already exist, skip the LLM calls and just load the data
-            if os.path.exists("results/" + answers_paths["nqopen"]) and not OVERWRITE:
-                start_time = time.time()
-                print(f"Loading {llm_name} NQ Open answers from csv...")
-                nqopen_answers = pd.read_csv("results/" + answers_paths["nqopen"])
-                csv_loaded_triggers["nqopen"] = True
-                logging.info(f"Time taken to load NQ Open answers: {time.time() - start_time} seconds")
-            else:
-                start_time = time.time()
-                print(f"Generating {llm_name} NQ Open answers...")
-                nqopen_llm_answers = evaluation.get_llm_answers(
-                    data=nqopen,
-                    parallel=True, 
-                    temperature=0.0, 
-                    logprobs=True,
-                    pool=pool,
-                    **evaluation.get_NQopen_messages()
-                )
-                # strip nqopen answers from anything outside the first set of square brackets
-                nqopen_llm_answers = [(answer[0], answer[1], answer[2], answer[-1].split('[\'')[1].split('\']')[0].replace('"', '')) for answer in nqopen_llm_answers]
-                nqopen_answers = evaluation.create_answers_df(nqopen, nqopen_llm_answers)
-                logging.info(f"Time taken to generate NQ Open answers: {time.time() - start_time} seconds")
-            if os.path.exists("results/" + answers_paths["xsum"]) and not OVERWRITE:
-                start_time = time.time()
-                print(f"Loading {llm_name} XSUM answers from csv...")
-                xsum_answers = pd.read_csv("results/" + answers_paths["xsum"])
-                csv_loaded_triggers["xsum"] = True
-                logging.info(f"Time taken to load XSUM answers: {time.time() - start_time} seconds")
-            else:
-                start_time = time.time()
-                print(f"Generating {llm_name} XSUM answers...")
-                xsum_llm_answers = evaluation.get_llm_answers(
-                    data=xsum,
-                    parallel=True, 
-                    temperature=0.0, 
-                    logprobs=True,
-                    pool=pool,
-                    **evaluation.get_XSUM_messages()
-                )
-                xsum_answers = evaluation.create_answers_df(xsum, xsum_llm_answers)
-                logging.info(f"Time taken to generate XSUM answers: {time.time() - start_time} seconds")
-
-            # Save answers
-            for dataset, path in answers_paths.items():
-                if not os.path.exists("results/"):
-                    os.makedirs("results/")
-                if dataset == "nqopen" and not csv_loaded_triggers["nqopen"]:
-                    nqopen_answers.to_csv("results/" + path, index=False)
-                elif dataset == "xsum" and not csv_loaded_triggers["xsum"]:
-                    xsum_answers.to_csv("results/" + path, index=False)
-
-            # Get hallucination scores
-            scores_paths = {
-                "nqopen": f"{llm_name}_nqopen_with_scores__{llm.model}".replace("/", "_").replace("\\", "_").replace(".", "-") + ".csv",
-                "xsum": f"{llm_name}_xsum_with_scores__{llm.model}".replace("/", "_").replace("\\", "_").replace(".", "-") + ".csv"
-            }
-            if not OVERWRITE:
-            start_time = time.time()
-            try:
-                xsum_scores = evaluation.get_hallucination_scores(pool, xsum_answers, detection_methods, parallel=False)
-                nqopen_scores = evaluation.get_hallucination_scores(pool, nqopen_answers, detection_methods, parallel=False)
-            except Exception as e:
-                logging.error(f"Error: {e}")
-                logging.shutdown()
-                raise e
-            logging.info(f"Time taken to get hallucination scores: {time.time() - start_time} seconds")
-            for method, times in evaluation.durations["detection"].items():
-                if times:  # avoid division by zero
-                    average_time = sum(times) / len(times)
-                    logging.info(f"Average time taken to calculate hallucination scores for {method}: {average_time} seconds")
-                else:
-                    logging.info(f"No time taken to calculate hallucination scores for {method}")
-
-            # Save scores
-            for dataset, path in scores_paths.items():
-                if dataset == "nqopen":
-                    nqopen_scores.to_csv("results/" + path, index=False)
-                elif dataset == "xsum":
-                    xsum_scores.to_csv("results/" + path, index=False)
-            print(f"Results for {llm_name} saved in results directory.")
-
-            # Log durations
-            logging.info(f"Durations for {llm_name} ({llm.model}): {evaluation.durations}")
-
-            # Get ground truths
             ground_truths_paths = {
                 "nqopen": f"{llm_name}_nqopen_with_ground_truths__{llm.model}".replace("/", "_").replace("\\", "_").replace(".", "-") + ".csv",
                 "xsum": f"{llm_name}_xsum_with_ground_truths__{llm.model}".replace("/", "_").replace("\\", "_").replace(".", "-") + ".csv"
             }
-            start_time = time.time()
-            nqopen_with_ground_truths = evaluation.get_ground_truths({"nqopen": nqopen_scores})
-            xsum_with_ground_truths = evaluation.get_ground_truths({"xsum": xsum_scores})
-            logging.info(f"Time taken to get ground truths: {time.time() - start_time} seconds")
+            if os.path.exists("results/" + ground_truths_paths["nqopen"]) and os.path.exists("results/" + ground_truths_paths["xsum"]) and not OVERWRITE:
+                # if the ground truth csvs already exist, skip the LLM calls and just load the data
+                start_time = time.time()
+                print(f"Loading {llm_name} ground truths from csv...")
+                nqopen_with_ground_truths = pd.read_csv("results/" + ground_truths_paths["nqopen"])
+                xsum_with_ground_truths = pd.read_csv("results/" + ground_truths_paths["xsum"])
+                logging.info(f"Time taken to load ground truths: {time.time() - start_time} seconds")
+            else:
+                # Get LLM answers
+                answers_paths = {
+                    "nqopen": f"{llm_name}_nqopen_with_answers__{llm.model}".replace("/", "_").replace("\\", "_").replace(".", "-") + ".csv",
+                    "xsum": f"{llm_name}_xsum_with_answers__{llm.model}".replace("/", "_").replace("\\", "_").replace(".", "-") + ".csv"
+                }
+                # if the answers csvs already exist, skip the LLM calls and just load the data
+                if os.path.exists("results/" + answers_paths["nqopen"]) and not OVERWRITE:
+                    start_time = time.time()
+                    print(f"Loading {llm_name} NQ Open answers from csv...")
+                    nqopen_answers = pd.read_csv("results/" + answers_paths["nqopen"])
+                    csv_loaded_triggers["nqopen"] = True
+                    logging.info(f"Time taken to load NQ Open answers: {time.time() - start_time} seconds")
+                else:
+                    start_time = time.time()
+                    print(f"Generating {llm_name} NQ Open answers...")
+                    nqopen_llm_answers = detection.get_llm_answers(
+                        data=nqopen,
+                        parallel=True, 
+                        temperature=0.0, 
+                        logprobs=True,
+                        pool=pool,
+                        **detection.get_NQopen_messages()
+                    )
+                    # strip nqopen answers from anything outside the first set of square brackets
+                    nqopen_llm_answers = [(answer[0], answer[1], answer[2], answer[-1].split('[\'')[1].split('\']')[0].replace('"', '')) for answer in nqopen_llm_answers]
+                    nqopen_answers = detection.create_answers_df(nqopen, nqopen_llm_answers)
+                    logging.info(f"Time taken to generate NQ Open answers: {time.time() - start_time} seconds")
+                if os.path.exists("results/" + answers_paths["xsum"]) and not OVERWRITE:
+                    start_time = time.time()
+                    print(f"Loading {llm_name} XSUM answers from csv...")
+                    xsum_answers = pd.read_csv("results/" + answers_paths["xsum"])
+                    csv_loaded_triggers["xsum"] = True
+                    logging.info(f"Time taken to load XSUM answers: {time.time() - start_time} seconds")
+                else:
+                    start_time = time.time()
+                    print(f"Generating {llm_name} XSUM answers...")
+                    xsum_llm_answers = detection.get_llm_answers(
+                        data=xsum,
+                        parallel=True, 
+                        temperature=0.0, 
+                        logprobs=True,
+                        pool=pool,
+                        **detection.get_XSUM_messages()
+                    )
+                    xsum_answers = detection.create_answers_df(xsum, xsum_llm_answers)
+                    logging.info(f"Time taken to generate XSUM answers: {time.time() - start_time} seconds")
 
-            # Save ground truths
-            for dataset, path in ground_truths_paths.items():
-                if dataset == "nqopen":
-                    nqopen_with_ground_truths.to_csv("results/" + path, index=False)
-                elif dataset == "xsum":
-                    xsum_with_ground_truths.to_csv("results/" + path, index=False)
-            print(f"Ground truths for {llm_name} saved in results directory.")
+                # Save answers
+                for dataset, path in answers_paths.items():
+                    if not os.path.exists("results/"):
+                        os.makedirs("results/")
+                    if dataset == "nqopen" and not csv_loaded_triggers["nqopen"]:
+                        nqopen_answers.to_csv("results/" + path, index=False)
+                    elif dataset == "xsum" and not csv_loaded_triggers["xsum"]:
+                        xsum_answers.to_csv("results/" + path, index=False)
+
+                # Get hallucination scores
+                scores_paths = {
+                    "nqopen": f"{llm_name}_nqopen_with_scores__{llm.model}".replace("/", "_").replace("\\", "_").replace(".", "-") + ".csv",
+                    "xsum": f"{llm_name}_xsum_with_scores__{llm.model}".replace("/", "_").replace("\\", "_").replace(".", "-") + ".csv"
+                }
+                start_time = time.time()
+                try:
+                    xsum_scores = detection.get_hallucination_scores(pool, xsum_answers, detection_methods, parallel=False)
+                    nqopen_scores = detection.get_hallucination_scores(pool, nqopen_answers, detection_methods, parallel=False)
+                except Exception as e:
+                    logging.error(f"Error: {e}")
+                    logging.shutdown()
+                    raise e
+                logging.info(f"Time taken to get hallucination scores: {time.time() - start_time} seconds")
+                for method, times in detection.durations["detection"].items():
+                    if times:  # avoid division by zero
+                        average_time = sum(times) / len(times)
+                        logging.info(f"Average time taken to calculate hallucination scores for {method}: {average_time} seconds")
+                    else:
+                        logging.info(f"No time taken to calculate hallucination scores for {method}")
+
+                # Save scores
+                for dataset, path in scores_paths.items():
+                    if dataset == "nqopen":
+                        nqopen_scores.to_csv("results/" + path, index=False)
+                    elif dataset == "xsum":
+                        xsum_scores.to_csv("results/" + path, index=False)
+                print(f"Results for {llm_name} saved in results directory.")
+
+                # Log durations
+                logging.info(f"Durations for {llm_name} ({llm.model}): {detection.durations}")
+
+                # Get ground truths
+                start_time = time.time()
+                nqopen_with_ground_truths = detection.get_ground_truths({"nqopen": nqopen_scores})
+                xsum_with_ground_truths = detection.get_ground_truths({"xsum": xsum_scores})
+                logging.info(f"Time taken to get ground truths: {time.time() - start_time} seconds")
+
+                # Save ground truths
+                for dataset, path in ground_truths_paths.items():
+                    if dataset == "nqopen":
+                        nqopen_with_ground_truths.to_csv("results/" + path, index=False)
+                    elif dataset == "xsum":
+                        xsum_with_ground_truths.to_csv("results/" + path, index=False)
+                print(f"Ground truths for {llm_name} saved in results directory.")
 
 
+            # Run Evaluation
+            
             
 
             logging.shutdown()
