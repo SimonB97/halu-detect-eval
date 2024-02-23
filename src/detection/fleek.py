@@ -80,6 +80,16 @@ class FLEEK:
             {'role': 'assistant', 'content': '[{"flat1": {"type": "flat", "subject": "David", "predicate": "profession", "object": "software engineer at Microsoft"}}, {"extended1": {"type": "extended", "subject": "David", "predicate": "bought", "attributes": [{"predicate_id": "1", "predicate_attribute": "object", "object": "house"}, {"predicate_id": "2", "predicate_attribute": "location", "object": "Seattle"}, {"predicate_id": "3", "predicate_attribute": "price", "object": "$1.2 million"}]}}]'},
             {'role': 'user', 'content': prompt_template.format("Simon lives in Berlin, has a dog named Max, and likes gaming.")},
             {'role': 'assistant', 'content': '[{"flat1": {"type": "flat", "subject": "Simon", "predicate": "lives in", "object": "Berlin"}}, {"flat2": {"type": "flat", "subject": "Simon", "predicate": "dog", "object": "Max"}}, {"flat3": {"type": "flat", "subject": "Simon", "predicate": "likes", "object": "gaming"}}]'},
+            {'role': 'user', 'content': prompt_template.format("Alice, a lawyer, lives in London and has two children, Bob and Charlie, who are studying in Oxford.")},
+            {'role': 'assistant', 'content': '[{"flat1": {"type": "flat", "subject": "Alice", "predicate": "profession", "object": "lawyer"}}, {"flat2": {"type": "flat", "subject": "Alice", "predicate": "lives in", "object": "London"}}, {"flat3": {"type": "flat", "subject": "Alice", "predicate": "children", "object": "Bob, Charlie"}}, {"extended1": {"type": "extended", "subject": "Bob, Charlie", "predicate": "studying in", "attributes": [{"predicate_id": "1", "predicate_attribute": "location", "object": "Oxford"}]}}]'},
+            {'role': 'user', 'content': prompt_template.format("Emma, a teacher, has a son named Jack who is a doctor and lives in Paris.")},
+            {'role': 'assistant', 'content': '[{"flat1": {"type": "flat", "subject": "Emma", "predicate": "profession", "object": "teacher"}}, {"flat2": {"type": "flat", "subject": "Emma", "predicate": "son", "object": "Jack"}}, {"flat3": {"type": "flat", "subject": "Jack", "predicate": "profession", "object": "doctor"}}, {"flat4": {"type": "flat", "subject": "Jack", "predicate": "lives in", "object": "Paris"}}]'},
+            {'role': 'user', 'content': prompt_template.format("Mike, a software engineer at Amazon, lives in Seattle and has a pet dog named Rex.")},
+            {'role': 'assistant', 'content': '[{"flat1": {"type": "flat", "subject": "Mike", "predicate": "profession", "object": "software engineer at Amazon"}}, {"flat2": {"type": "flat", "subject": "Mike", "predicate": "lives in", "object": "Seattle"}}, {"flat3": {"type": "flat", "subject": "Mike", "predicate": "pet", "object": "Rex"}}]'},
+            {'role': 'user', 'content': prompt_template.format("Sarah, a nurse, has a husband named Tom who is a firefighter and they live in Chicago with their two children, Amy and Alex.")},
+            {'role': 'assistant', 'content': '[{"flat1": {"type": "flat", "subject": "Sarah", "predicate": "profession", "object": "nurse"}}, {"flat2": {"type": "flat", "subject": "Sarah", "predicate": "husband", "object": "Tom"}}, {"flat3": {"type": "flat", "subject": "Tom", "predicate": "profession", "object": "firefighter"}}, {"flat4": {"type": "flat", "subject": "Sarah, Tom", "predicate": "live in", "object": "Chicago"}}, {"flat5": {"type": "flat", "subject": "Sarah, Tom", "predicate": "children", "object": "Amy, Alex"}}]'},
+            {'role': 'user', 'content': prompt_template.format("Robert, a pilot, has a wife named Linda who is a chef. They live in San Francisco and have a daughter named Lisa who is studying medicine at Stanford.")},
+            {'role': 'assistant', 'content': '[{"flat1": {"type": "flat", "subject": "Robert", "predicate": "profession", "object": "pilot"}}, {"flat2": {"type": "flat", "subject": "Robert", "predicate": "wife", "object": "Linda"}}, {"flat3": {"type": "flat", "subject": "Linda", "predicate": "profession", "object": "chef"}}, {"flat4": {"type": "flat", "subject": "Robert, Linda", "predicate": "live in", "object": "San Francisco"}}, {"flat5": {"type": "flat", "subject": "Robert, Linda", "predicate": "daughter", "object": "Lisa"}}, {"extended1": {"type": "extended", "subject": "Lisa", "predicate": "studying", "attributes": [{"predicate_id": "1", "predicate_attribute": "subject", "object": "medicine"}, {"predicate_id": "2", "predicate_attribute": "location", "object": "Stanford"}]}}]'},
         ]
         for example in examples:
             example['content'] = example['content'].replace('predicate_id', 'predicateID')  # Fix for JSON property name
@@ -173,7 +183,11 @@ class FLEEK:
         prompt_template = "Generate a question (exactly one) based on the fact:\n\nSubject: '{subject}'\nPredicate: '{predicate}'\nObject: '{object}'"
         # fact = list(fact.values())
         fact = [fact]
-        prompt = prompt_template.format(subject=fact[0]['subject'], predicate=fact[0]['predicate'], object=fact[0]['object'])
+        try:
+            prompt = prompt_template.format(subject=fact[0]['subject'], predicate=fact[0]['predicate'], object=fact[0]['object'])
+        except KeyError as e:
+            logger.error(f"An Error occurred while formatting the attributes of the extended triple.\n  fact_details:\n{fact}\n  error: {e}")
+            raise ValueError("An Error occurred while formatting the attributes of the extended triple. Please check the logs for more information.")
         examples = [
             {'role': 'user', 'content': prompt_template.format(subject="Taylor Swift", predicate="birthdate", object="1989")},
             {'role': 'assistant', 'content': '[{"type": "Year", "question": "In which year was Taylor Swift born?"}]</s>'},
