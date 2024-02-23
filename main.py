@@ -3,7 +3,7 @@ import logging
 # Set up logging
 logging.basicConfig(filename='app.log', filemode='w', format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
 
-from src.detection import lbhd, lm_v_lm, fleek, selfcheck_nli
+from src.detection import lbhd, lm_v_lm, fleek, selfcheck_gpt
 from src.models.llm import OpenAILlm, TogetherAILlm, BaseLlm
 from src.data.load_data import load_datasets, prepare_data
 import pandas as pd
@@ -37,6 +37,8 @@ class HallucinationDetection:
                 "lbhd": [],
                 "lm_v_lm": [],
                 "fleek": [],
+                "selfcheck_nli": [],
+                "selfcheck_bert": [],
             },
         }
     
@@ -135,8 +137,16 @@ class HallucinationDetection:
                 samples = []
                 for col in row.index:
                     if "llm_answer__" in col:
-                        samples.append(row[col])
-                return selfcheck_nli.SelfCheckNLI().get_hallucination_score(response=row["llm_answer"][-1], samples=samples)
+                        samples.append(row[col][-1])
+                scores = selfcheck_gpt.SelfCheck_NLI().get_hallucination_score(response=row["llm_answer"][-1], samples=samples)
+                return scores
+            elif method == "selfcheck_bert":
+                samples = []
+                for col in row.index:
+                    if "llm_answer__" in col:
+                        samples.append(row[col][-1])
+                scores = selfcheck_gpt.SelfCheck_BERT().get_hallucination_score(response=row["llm_answer"][-1], samples=samples)
+                return scores
 
 
         for method in detection:
@@ -155,6 +165,7 @@ class HallucinationDetection:
                 for index, score in zip(data_with_answers.index, scores):
                     data_with_scores.at[index, column_name] = score
             else:
+                # normal sequential processing
                 for index, row in data_with_answers.iterrows():
                     try:
                         score = calculate_score(method, row)
@@ -231,20 +242,22 @@ if __name__ == "__main__":
     copilot_api_key = os.getenv("COPILOT_API_KEY")
 
     # Set up detection methods
-    n_samples = 4  # number of additional samples to use for selfcheck_nli
+    # if new methods are added, make sure to add them to self.durations too
+    tempatures = [1.0, 1.0, 1.0, 1.0, 1.0]  # temperature for each sample, detemrines the number of samples too
     detection_methods = [
                 "selfcheck_nli",
-                "fleek",
-                "lm_v_lm", 
-                "lbhd", 
+                "selfcheck_bert",
+                # "fleek",
+                # "lm_v_lm", 
+                # "lbhd", 
             ]
 
     # Load LLMs
     DEBUG = False  # use to display api request details
     llms = {
-            "openai": OpenAILlm(openai_api_key, "gpt-3.5-turbo", debug=DEBUG),
-            "togetherai": TogetherAILlm(together_bearer_token, "mistralai/Mixtral-8x7B-Instruct-v0.1", debug=DEBUG),
             "togetherai_2": TogetherAILlm(together_bearer_token, "mistralai/Mistral-7B-Instruct-v0.1", debug=DEBUG),
+            # "togetherai": TogetherAILlm(together_bearer_token, "mistralai/Mixtral-8x7B-Instruct-v0.1", debug=DEBUG),
+            "openai": OpenAILlm(openai_api_key, "gpt-3.5-turbo", debug=DEBUG),
         }
     eval_llm = OpenAILlm(copilot_api_key, "gpt-4", "http://192.168.2.109:8080/v1/chat/completions")  # use regular OpenAI API or custom endpoint
 
@@ -278,6 +291,7 @@ if __name__ == "__main__":
                 xsum_with_ground_truths = pd.read_csv("results/" + ground_truths_paths["xsum"])
                 logging.info(f"Time taken to load ground truths: {time.time() - start_time} seconds")
             else:
+
                 # Get LLM answers
                 answers_paths = {
                     "nqopen": f"{llm_name}_nqopen_with_answers__{llm.model}".replace("/", "_").replace("\\", "_").replace(".", "-") + ".csv",
@@ -295,7 +309,7 @@ if __name__ == "__main__":
                     print(f"Generating {llm_name} NQ Open answers...")
                     nqopen_llm_answers = detection.get_llm_answers(
                         data=nqopen,
-                        parallel=True, 
+                        parallel=True,  # TODO: check if parallel processing is working
                         temperature=0.0, 
                         logprobs=True,
                         pool=pool,
@@ -316,7 +330,7 @@ if __name__ == "__main__":
                     print(f"Generating {llm_name} XSUM answers...")
                     xsum_llm_answers = detection.get_llm_answers(
                         data=xsum,
-                        parallel=True, 
+                        parallel=True,   # TODO: check if parallel processing is working
                         temperature=0.0, 
                         logprobs=True,
                         pool=pool,
@@ -324,6 +338,29 @@ if __name__ == "__main__":
                     )
                     xsum_answers = detection.create_answers_df(xsum, xsum_llm_answers)
                     logging.info(f"Time taken to generate XSUM answers: {time.time() - start_time} seconds")
+                
+                # Add Samples for selfcheck gpt
+                if "selfcheck_nli" or "selfcheck_bert" in detection_methods:
+                    for i, temp in enumerate(tempatures):
+                        print(f"Getting additional samples for selfcheck_nli with temperature: {temp} (sample {i+1}/{len(tempatures)})...")
+                        nqopen_samples = detection.get_llm_answers(
+                            data=nqopen,
+                            parallel=True,  # TODO: check if parallel processing is working
+                            temperature=temp, 
+                            logprobs=False,
+                            pool=pool,
+                            **detection.get_NQopen_messages()
+                        )
+                        xsum_samples = detection.get_llm_answers(
+                            data=xsum,
+                            parallel=True,   # TODO: check if parallel processing is working
+                            temperature=temp, 
+                            logprobs=False,
+                            pool=pool,
+                            **detection.get_XSUM_messages()
+                        )
+                        nqopen_answers = detection.create_answers_df(nqopen_answers, nqopen_samples)
+                        xsum_answers = detection.create_answers_df(xsum_answers, xsum_samples)
 
                 # Save answers
                 for dataset, path in answers_paths.items():
@@ -333,6 +370,7 @@ if __name__ == "__main__":
                         nqopen_answers.to_csv("results/" + path, index=False)
                     elif dataset == "xsum" and not csv_loaded_triggers["xsum"]:
                         xsum_answers.to_csv("results/" + path, index=False)
+
 
                 # Get hallucination scores
                 scores_paths = {
@@ -355,6 +393,7 @@ if __name__ == "__main__":
                     else:
                         logging.info(f"No time taken to calculate hallucination scores for {method}")
 
+
                 # Save scores
                 for dataset, path in scores_paths.items():
                     if dataset == "nqopen":
@@ -365,6 +404,7 @@ if __name__ == "__main__":
 
                 # Log durations
                 logging.info(f"Durations for {llm_name} ({llm.model}): {detection.durations}")
+
 
                 # Get ground truths
                 start_time = time.time()

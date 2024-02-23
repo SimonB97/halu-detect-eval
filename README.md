@@ -23,6 +23,8 @@
     - unified evidence classification (supported/unsupported) and fact verification (true/false) into one step
     - only returns binary classification (supported/unsupported) for sentences (original paper used higher granularity)
 
+- **SelfCheckGPT**:
+    - 5 samples at temprature 1.0 are compared with first answer at temperature 0.0
 
 ## Notes on datasets
 
@@ -37,6 +39,8 @@
 
 
 ## General Implementation Notes
+
+- Generally using temperature 0.0 for answer generation, to get more reproducible results
 
 **JSON Mode**:
     - used for FLEEK, not necessary but can improve robustness. Working with OpenAI models and some TogetherAI models (see [together.ai JSON docs](https://docs.together.ai/docs/json-mode))
