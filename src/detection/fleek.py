@@ -100,8 +100,8 @@ class FLEEK:
             messages.insert(-1, example)
         
         response = self.llm.get_response(messages, max_tokens=2048, json_mode=True)[-1]
-        print(f"DEBUG: extract_facts - sentence: \"{sentence}\"")
-        print(f"DEBUG: extract_facts - response: {response}")
+        # print(f"DEBUG: extract_facts - sentence: \"{sentence}\"")
+        # print(f"DEBUG: extract_facts - response: {response}")
 
         return self.parse_json(response)
     
@@ -123,7 +123,7 @@ class FLEEK:
             _, _, response = response.partition('[')
             response, _, _ = response.rpartition(']')
             response = f"[{response}]"
-            print(f"DEBUG: parsing json - response: \"{response}\"")
+            # print(f"DEBUG: parsing json - response: \"{response}\"")
             dictionary = json.loads(response)
         except ValueError as e:
             print(f"Unable to parse JSON: {response}")
@@ -147,14 +147,14 @@ class FLEEK:
         
         for fact in facts:
             if fact["type"].lower() == "flat":
-                print(f"DEBUG: generate_questions - flat fact: {fact}")
+                # print(f"DEBUG: generate_questions - flat fact: {fact}")
                 question = self.generate_flat_triple_question(fact)
             elif fact["type"].lower() == "extended":
-                print(f"DEBUG: generate_questions - extended fact: {fact}")
+                # print(f"DEBUG: generate_questions - extended fact: {fact}")
                 question = self.generate_extended_triple_question(fact)
             questions.append(question)
 
-        print(f"DEBUG: generate_questions - {len(questions)} questions generated: {questions}")
+        # print(f"DEBUG: generate_questions - {len(questions)} questions generated: {questions}")
         return questions
     
 
@@ -262,7 +262,7 @@ class FLEEK:
         
         # Get the response from the language model
         response = self.llm.get_response(messages, max_tokens=2048)[-1]#
-        print(f"DEBUG: generate_extended_triple_question - response: \"{response}\"")
+        # print(f"DEBUG: generate_extended_triple_question - response: \"{response}\"")
         question = self.parse_json(response)[0]['question']
 
         return question
@@ -331,7 +331,7 @@ class FLEEK:
             subject = fact['subject']
             predicate = fact['predicate']
 
-            print(f"DEBUG: verify_facts - fact: {fact}")
+            # print(f"DEBUG: verify_facts - fact: {fact}")
             
             # Iterate through each piece of evidence for the current fact
             for evidence in search_results[fact_idx]:
@@ -352,7 +352,7 @@ class FLEEK:
                 else:
                     fact_type = "flat"
                 prompt = self.construct_verification_prompt(fact, evidence_triple, fact_type)
-                print(f"DEBUG: verify_facts - prompt: {prompt}")
+                # print(f"DEBUG: verify_facts - prompt: {prompt}")
                 
                 # Use LLM to verify the evidence against the fact
                 response = self.llm.get_response(prompt, system_message, max_tokens=512, json_mode=True)[-1]
@@ -440,13 +440,13 @@ class FLEEK:
 
         # without splitting into sentences
         facts = self.extract_facts(response[-1])
-        print(f"DEBUG: get_hallucination_score - facts:")
+        # print(f"DEBUG: get_hallucination_score - facts:")
         # print_json(facts)
         questions = self.generate_questions(facts)
-        print(f"DEBUG: get_hallucination_score - questions:")
+        # print(f"DEBUG: get_hallucination_score - questions:")
         # print_json(questions)
         search_results = self.retrieve_evidence_web_search(questions, "advanced", max_results=10)
-        print(f"DEBUG: get_hallucination_score - search_results:")
+        # print(f"DEBUG: get_hallucination_score - search_results:")
         # print_json(search_results)
         verification_results = self.verify_facts(facts, search_results)
         # return as dictionary

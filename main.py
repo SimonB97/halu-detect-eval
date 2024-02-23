@@ -144,13 +144,17 @@ class Evaluation:
                 for index, row in data_with_answers.iterrows():
                     try:
                         score = calculate_score(method, row)
+                        if type(score) == bool:
+                            score = 1 if score else 0  # convert boolean to int to indicate error with -1
+                        if type(score) == str:
+                            score = 1 if score == "Questionable" else 0
                     except Exception as e:
                         logging.error(f"Error: {e}")
                         col_type = type(data_with_scores.at[index, column_name])
                         if col_type == dict:
                             data_with_scores.at[index, column_name] = {"error": e}
-                        elif col_type == bool:
-                            data_with_scores.at[index, column_name] = 
+                        elif col_type == int:
+                            data_with_scores.at[index, column_name] = -1
                     # print(f"DEBUG: get_hallucination_scores: score: {list(score.items())[0][1]['score']}\ntype: {type(list(score.items())[0][1])}")
                     data_with_scores.at[index, column_name] = list(score.items())[0][1]["score"]
             
@@ -197,7 +201,7 @@ if __name__ == "__main__":
     csv_loaded_triggers = {"nqopen": False, "xsum": False}
     with Pool() as pool:
         for llm_name, llm in llms.items():
-            print(f"Processing LLM: {llm.model}...")
+            print(f"\n--------\nProcessing LLM: {llm.model}...\n")
             
             evaluation = Evaluation(llm)
 

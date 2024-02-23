@@ -21,7 +21,7 @@ class LBHD:
         Returns:
             dict: A dictionary with sentences as keys and their hallucination scores as values.
         """
-        # print(f"DEBUG: Response response:\n- Tokens:", response[0], "\n- Logprobs:", response[1], "\n- Linear probabilities:", response[2], "\n- Full text:", response[3])
+        # # print(f"DEBUG: Response response:\n- Tokens:", response[0], "\n- Logprobs:", response[1], "\n- Linear probabilities:", response[2], "\n- Full text:", response[3])
         sentences = split_into_sentences_spacy(response[-1])
         response_scores = {}
 
