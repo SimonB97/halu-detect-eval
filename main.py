@@ -14,7 +14,6 @@ import time
 from ratelimit import limits, sleep_and_retry
 import multiprocessing
 import datetime
-import numpy as np
 import time
 
 
@@ -29,8 +28,9 @@ def check_limit():
 
 
 class Evaluation:
-    def __init__(self, llm: BaseLlm):
+    def __init__(self, llm: BaseLlm, eval_llm: BaseLlm = None):
         self.llm = llm
+        self.eval_llm = eval_llm  # used to retrieve ground truth labels
         self.durations = {
             "detection": {
                 "lbhd": [],
@@ -174,17 +174,42 @@ class Evaluation:
         return data_with_scores
 
 
-    def get_ground_truths(self, data: pd.DataFrame):
+    def get_ground_truths(self, data: dict[str, pd.DataFrame]):
 
-        def calc_semantic_similarity(answer, llm_answer):
-            return 0.5  # TODO: implement semantic similarity calculation
+        def evaluate_w_llm(prompt, answer, llm_answer, additional_instructs=None):
+            system_message = (
+                "As an expert in Hallucination detection, your task is to determine if the given answer is a hallucination. "
+                "Based on the original task at hand, the ground truth answer and the given answer, please assess if the given answer deviates from the ground truth. "
+                "Focus on the factual correctness of the answer and not on the quality of the language used. "
+                "Provide your assessment in form of a valid JSON object with the following keys: "
+                "{'hallucination': bool} where bool is True if the answer is a hallucination and False if it is not. "
+            )
+            if additional_instructs:
+                system_message += "\n" + additional_instructs
+            prompt = (
+                "Is the given answer a hallucination?\n\nPrompt: {prompt}\n\nGround truth: {answer}\n\nGiven answer: {llm_answer}\n\n"
+            ).format(prompt=prompt, answer=answer, llm_answer=llm_answer)
 
-        print(f"Getting ground truth for {len(data)} answers...")
-        data_with_ground_truth = data.copy()
-        data_with_ground_truth["ground_truth"] = {}
-        for index, row in data.iterrows():
-            data_with_ground_truth.at[index, "ground_truth"] = calc_semantic_similarity(row["answer"], row["llm_answer"][-1])
-        return data_with_ground_truth
+            return self.eval_llm.get_response(prompt, system_message)
+            
+
+            
+        print(f"Getting ground truth labels for {len(data)} answers using {self.eval_llm.model}...")
+        data_with_ground_truths = data.copy()
+        for dataset, df in data.items():
+            if dataset == "nqopen":
+                additional_instructs = ("For this particular task, the instruction where to provide a sentence, whereas the ground truth is a list of entities. "
+                                        "Disregard this discrepancy and focus on the factual correctness of the given answer.")
+            elif dataset == "xsum":
+                additional_instructs = ("For this particular task, the instruction was to provide a summary of the article in one sentence. "
+                                        "Focus on the factual consistency of the given answer with the article and the ground truth summary.")
+            for index, row in df.iterrows():
+                data_with_ground_truths.at[index, "ground_truth"] = evaluate_w_llm(row["prompt"], row["answer"], row["llm_answer"], additional_instructs)
+        return data_with_ground_truths
+                
+                
+
+
 
 
 
@@ -193,6 +218,7 @@ if __name__ == "__main__":
     together_bearer_token = os.getenv("TOGETHER_AUTH_BEARER_TOKEN")
     openai_api_key = os.getenv("OPENAI_API_KEY")
     tavily_api_key = os.getenv("TAVILY_API_KEY")  # needed for FLEEK web search
+    copilot_api_key = os.getenv("COPILOT_API_KEY")
 
     # Set up detection methods
     detection_methods = [
@@ -208,6 +234,7 @@ if __name__ == "__main__":
             # "togetherai": TogetherAILlm(together_bearer_token, "mistralai/Mixtral-8x7B-Instruct-v0.1", debug=DEBUG),
             "togetherai_2": TogetherAILlm(together_bearer_token, "mistralai/Mistral-7B-Instruct-v0.1", debug=DEBUG),
         }
+    eval_llm = OpenAILlm(copilot_api_key, "gpt-4", "http://192.168.2.109:8080/v1/chat/completions")  # use regular OpenAI API or custom endpoint
 
     # Load datasets
     start_time = time.time()
@@ -225,7 +252,7 @@ if __name__ == "__main__":
         for llm_name, llm in llms.items():
             print(f"\n--------\nProcessing LLM: {llm.model}...\n")
             
-            evaluation = Evaluation(llm)
+            evaluation = Evaluation(llm, eval_llm)
 
             answers_paths = {
                 "nqopen": f"{llm_name}_nqopen_with_answers__{llm.model}".replace("/", "_").replace("\\", "_").replace(".", "-") + ".csv",
@@ -283,6 +310,11 @@ if __name__ == "__main__":
                     xsum_answers.to_csv("results/" + path, index=False)
 
             # Get hallucination scores
+            scores_paths = {
+                "nqopen": f"{llm_name}_nqopen_with_scores__{llm.model}".replace("/", "_").replace("\\", "_").replace(".", "-") + ".csv",
+                "xsum": f"{llm_name}_xsum_with_scores__{llm.model}".replace("/", "_").replace("\\", "_").replace(".", "-") + ".csv"
+            }
+            if not OVERWRITE:
             start_time = time.time()
             try:
                 xsum_scores = evaluation.get_hallucination_scores(pool, xsum_answers, detection_methods, parallel=False)
@@ -300,10 +332,6 @@ if __name__ == "__main__":
                     logging.info(f"No time taken to calculate hallucination scores for {method}")
 
             # Save scores
-            scores_paths = {
-                "nqopen": f"{llm_name}_nqopen_with_scores__{llm.model}".replace("/", "_").replace("\\", "_").replace(".", "-") + ".csv",
-                "xsum": f"{llm_name}_xsum_with_scores__{llm.model}".replace("/", "_").replace("\\", "_").replace(".", "-") + ".csv"
-            }
             for dataset, path in scores_paths.items():
                 if dataset == "nqopen":
                     nqopen_scores.to_csv("results/" + path, index=False)
@@ -313,6 +341,24 @@ if __name__ == "__main__":
 
             # Log durations
             logging.info(f"Durations for {llm_name} ({llm.model}): {evaluation.durations}")
+
+            # Get ground truths
+            ground_truths_paths = {
+                "nqopen": f"{llm_name}_nqopen_with_ground_truths__{llm.model}".replace("/", "_").replace("\\", "_").replace(".", "-") + ".csv",
+                "xsum": f"{llm_name}_xsum_with_ground_truths__{llm.model}".replace("/", "_").replace("\\", "_").replace(".", "-") + ".csv"
+            }
+            start_time = time.time()
+            nqopen_with_ground_truths = evaluation.get_ground_truths({"nqopen": nqopen_scores})
+            xsum_with_ground_truths = evaluation.get_ground_truths({"xsum": xsum_scores})
+            logging.info(f"Time taken to get ground truths: {time.time() - start_time} seconds")
+
+            # Save ground truths
+            for dataset, path in ground_truths_paths.items():
+                if dataset == "nqopen":
+                    nqopen_with_ground_truths.to_csv("results/" + path, index=False)
+                elif dataset == "xsum":
+                    xsum_with_ground_truths.to_csv("results/" + path, index=False)
+            print(f"Ground truths for {llm_name} saved in results directory.")
 
 
             

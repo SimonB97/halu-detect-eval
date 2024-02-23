@@ -47,3 +47,6 @@
         - answer generation
         - hallucination detection
         - 
+
+**Evaluation**:
+    - gpt-4-0613 (OpenAI) used to generate ground truth labels
