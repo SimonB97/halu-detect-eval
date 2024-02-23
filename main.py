@@ -109,7 +109,7 @@ class Evaluation:
 
 
     def get_hallucination_scores(self, pool, data_with_answers: pd.DataFrame, detection: list[str], parallel: bool = False):
-        print(f"Calculating hallucination scores for {len(data_with_answers)} requests * {len(detection)} detection methods...")
+        print(f"Calculating hallucination scores for {len(data_with_answers)} answers * {len(detection)} detection methods...")
         data_with_scores = data_with_answers.copy()
 
         def calculate_score(method, row):
@@ -157,9 +157,9 @@ if __name__ == "__main__":
 
     # Set up detection methods
     detection_methods = [
-                "lbhd", 
                 "lm_v_lm", 
-                "fleek"
+                "lbhd", 
+                "fleek",
             ]
 
     # Load LLMs
@@ -168,14 +168,14 @@ if __name__ == "__main__":
             "togetherai": TogetherAILlm(together_bearer_token, "mistralai/Mixtral-8x7B-Instruct-v0.1", debug=DEBUG),
             "togetherai_2": TogetherAILlm(together_bearer_token, "mistralai/Mistral-7B-Instruct-v0.1", debug=DEBUG),
             "openai": OpenAILlm(openai_api_key, "gpt-3.5-turbo", debug=DEBUG),
-    }
+        }
     
     # Set up logging
     logging.basicConfig(filename='app.log', filemode='w', format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
 
     # Load datasets
     start_time = time.time()
-    RANGE = 80   # minimum (RANGE * n_datasets * n_llms) requests made to web search API
+    RANGE = 3   # minimum (RANGE * n_datasets * n_llms) requests made to web search API
     datasets = load_datasets()
     prepared_data = prepare_data(datasets)
     nqopen = prepared_data["nqopen"].iloc[:RANGE]
@@ -192,8 +192,8 @@ if __name__ == "__main__":
             evaluation = Evaluation(llm)
 
             answers_paths = {
-                "nqopen": f"{llm_name}_nqopen_with_answers__{llm.model}.csv".replace("/", "_"),
-                "xsum": f"{llm_name}_xsum_with_answers__{llm.model}.csv".replace("/", "_")
+                "nqopen": f"{llm_name}_nqopen_with_answers__{llm.model}".replace("/", "_").replace("\\", "_").replace(".", "") + ".csv",
+                "xsum": f"{llm_name}_xsum_with_answers__{llm.model}".replace("/", "_").replace("\\", "_").replace(".", "") + ".csv"
             }
             # if the csvs already exist, skip the LLM calls and just load the data
             if os.path.exists("results/" + answers_paths["nqopen"]) and not OVERWRITE:
@@ -254,8 +254,8 @@ if __name__ == "__main__":
 
             # Save scores
             scores_paths = {
-                "nqopen": f"{llm_name}_nqopen_with_scores__{llm.model}.csv".replace("/", "_"),
-                "xsum": f"{llm_name}_xsum_with_scores__{llm.model}.csv".replace("/", "_")
+                "nqopen": f"{llm_name}_nqopen_with_scores__{llm.model}".replace("/", "_").replace("\\", "_").replace(".", "") + ".csv",
+                "xsum": f"{llm_name}_xsum_with_scores__{llm.model}".replace("/", "_").replace("\\", "_").replace(".", "") + ".csv"
             }
             for dataset, path in scores_paths.items():
                 if dataset == "nqopen":

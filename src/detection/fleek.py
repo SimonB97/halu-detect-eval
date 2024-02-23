@@ -6,13 +6,20 @@ from src.utils.utils import print_json
 from tavily import TavilyClient
 from ratelimit import limits, sleep_and_retry
 
-# 50 calls per second
-CALLS = 10
-RATE_LIMIT = 1
-
+# LLMs: 50 calls per second
+LLM_CALLS = 50
+LLM_RATE_LIMIT = 1
 @sleep_and_retry
-@limits(calls=CALLS, period=RATE_LIMIT)
-def check_limit():
+@limits(calls=LLM_CALLS, period=LLM_RATE_LIMIT)
+def check_llm_limit():
+    ''' Empty function just to check for calls to API '''
+
+# Search API: 20 calls per minute
+SEARCH_CALLS = 20
+SEARCH_RATE_LIMIT = 60
+@sleep_and_retry
+@limits(calls=SEARCH_CALLS, period=SEARCH_RATE_LIMIT)
+def check_search_limit():
     ''' Empty function just to check for calls to API '''
 
 
@@ -177,6 +184,7 @@ class FLEEK:
         for example in examples:
             messages.insert(-1, example)
 
+        check_llm_limit()
         response = self.llm.get_response(messages, max_tokens=2048)[-1]
         response = response
         return self.parse_json(response)[0]['question']
@@ -265,7 +273,7 @@ class FLEEK:
         Returns:
             List[Dict[str, str]]: A list of dictionaries containing the URL and content of each search result snippet.
         """
-        check_limit()
+        check_search_limit()
         client = TavilyClient(self.search_api_key)
         try:
             resp = client.search(query, search_depth, max_results=max_results)
