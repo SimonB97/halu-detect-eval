@@ -8,7 +8,8 @@ from ratelimit import limits, sleep_and_retry
 import logging
 
 # Set up logging
-logging.basicConfig(filename='app.log', filemode='w', format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.ERROR)
 
 # LLMs: 50 calls per second
 LLM_CALLS = 50
@@ -17,6 +18,7 @@ LLM_RATE_LIMIT = 1
 @limits(calls=LLM_CALLS, period=LLM_RATE_LIMIT)
 def check_llm_limit():
     ''' Empty function just to check for calls to API '''
+    raise RetryException("Retrying...")  # Raise custom exception to indicate retry
 
 # Search API: 20 calls per minute
 SEARCH_CALLS = 20
@@ -25,6 +27,10 @@ SEARCH_RATE_LIMIT = 60
 @limits(calls=SEARCH_CALLS, period=SEARCH_RATE_LIMIT)
 def check_search_limit():
     ''' Empty function just to check for calls to API '''
+    raise RetryException("Retrying...")  # Raise custom exception to indicate retry
+
+class RetryException(Exception):
+    pass
 
 
 class FLEEK:
@@ -220,7 +226,7 @@ class FLEEK:
         try:
             attributes_formatted = ", ".join([f"{attr['predicateAttribute']}: {attr['object']}" for attr in fact_details['attributes']])
         except KeyError as e:
-            logging.error("An Error occurred while formatting the attributes of the extended triple.\n  fact_details:\n{fact_details}\n  error: {e}")
+            logger.error(f"An Error occurred while formatting the attributes of the extended triple.\n  fact_details:\n{fact_details}\n  error: {e}")
             raise ValueError("An Error occurred while formatting the attributes of the extended triple. Please check the logs for more information.")
         prompt_template = (
             "Generate a question based on the extended fact:\n\nSubject: '{subject}'\nPredicate: '{predicate}'\nAttributes: {attributes}\n\n"

@@ -1,3 +1,8 @@
+
+import logging
+# Set up logging
+logging.basicConfig(filename='app.log', filemode='w', format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
+
 from src.detection import lbhd, lm_v_lm, fleek
 from src.models.llm import OpenAILlm, TogetherAILlm, BaseLlm
 from src.data.load_data import load_datasets, prepare_data
@@ -11,7 +16,6 @@ import multiprocessing
 import datetime
 import numpy as np
 import time
-import logging
 
 
 # 50 calls per second
@@ -169,9 +173,6 @@ if __name__ == "__main__":
             # "togetherai": TogetherAILlm(together_bearer_token, "mistralai/Mixtral-8x7B-Instruct-v0.1", debug=DEBUG),
             # "togetherai_2": TogetherAILlm(together_bearer_token, "mistralai/Mistral-7B-Instruct-v0.1", debug=DEBUG),
         }
-    
-    # Set up logging
-    logging.basicConfig(filename='app.log', filemode='w', format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
 
     # Load datasets
     start_time = time.time()
@@ -248,8 +249,8 @@ if __name__ == "__main__":
 
             # Get hallucination scores
             start_time = time.time()
-            nqopen_scores = evaluation.get_hallucination_scores(pool, nqopen_answers, detection_methods, parallel=False)
             xsum_scores = evaluation.get_hallucination_scores(pool, xsum_answers, detection_methods, parallel=False)
+            nqopen_scores = evaluation.get_hallucination_scores(pool, nqopen_answers, detection_methods, parallel=False)
             logging.info(f"Time taken to get hallucination scores: {time.time() - start_time} seconds")
 
             # Save scores
