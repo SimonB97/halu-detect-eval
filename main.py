@@ -124,6 +124,7 @@ class Evaluation:
             elif method == "fleek":
                 return fleek.FLEEK(self.llm, tavily_api_key).get_hallucination_score(response=row["llm_answer"])
 
+
         for method in detection:
             print(f"Calculating hallucination scores for {method}...")
 
@@ -141,7 +142,15 @@ class Evaluation:
                     data_with_scores.at[index, column_name] = score
             else:
                 for index, row in data_with_answers.iterrows():
-                    score = calculate_score(method, row)
+                    try:
+                        score = calculate_score(method, row)
+                    except Exception as e:
+                        logging.error(f"Error: {e}")
+                        col_type = type(data_with_scores.at[index, column_name])
+                        if col_type == dict:
+                            data_with_scores.at[index, column_name] = {"error": e}
+                        elif col_type == bool:
+                            data_with_scores.at[index, column_name] = 
                     # print(f"DEBUG: get_hallucination_scores: score: {list(score.items())[0][1]['score']}\ntype: {type(list(score.items())[0][1])}")
                     data_with_scores.at[index, column_name] = list(score.items())[0][1]["score"]
             
@@ -249,8 +258,13 @@ if __name__ == "__main__":
 
             # Get hallucination scores
             start_time = time.time()
-            xsum_scores = evaluation.get_hallucination_scores(pool, xsum_answers, detection_methods, parallel=False)
-            nqopen_scores = evaluation.get_hallucination_scores(pool, nqopen_answers, detection_methods, parallel=False)
+            try:
+                xsum_scores = evaluation.get_hallucination_scores(pool, xsum_answers, detection_methods, parallel=False)
+                nqopen_scores = evaluation.get_hallucination_scores(pool, nqopen_answers, detection_methods, parallel=False)
+            except Exception as e:
+                logging.error(f"Error: {e}")
+                logging.shutdown()
+                raise e
             logging.info(f"Time taken to get hallucination scores: {time.time() - start_time} seconds")
 
             # Save scores
@@ -264,3 +278,7 @@ if __name__ == "__main__":
                 elif dataset == "xsum":
                     xsum_scores.to_csv("results/" + path, index=False)
             print(f"Results for {llm_name} saved in results directory.")
+
+
+
+            logging.shutdown()
