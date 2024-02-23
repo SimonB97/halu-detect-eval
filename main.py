@@ -157,9 +157,9 @@ if __name__ == "__main__":
 
     # Set up detection methods
     detection_methods = [
+                "fleek",
                 "lm_v_lm", 
                 "lbhd", 
-                "fleek",
             ]
 
     # Load LLMs
@@ -187,7 +187,7 @@ if __name__ == "__main__":
     csv_loaded_triggers = {"nqopen": False, "xsum": False}
     with Pool() as pool:
         for llm_name, llm in llms.items():
-            print(f"Processing LLM: {llm_name}...")
+            print(f"Processing LLM: {llm.model}...")
             
             evaluation = Evaluation(llm)
 

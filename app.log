@@ -1,5 +1,21 @@
-2024-02-23 12:51:59,624 - root - INFO - Time taken to load datasets: 15.931525945663452 seconds
-2024-02-23 12:52:21,816 - root - INFO - Time taken to generate NQ Open answers: 22.11406922340393 seconds
-2024-02-23 12:52:34,223 - root - INFO - Time taken to generate XSUM answers: 12.406085729598999 seconds
-2024-02-23 12:55:15,871 - root - INFO - Time taken to calculate hallucination scores for lm_v_lm: 161.63275527954102 seconds
-2024-02-23 12:55:23,836 - root - INFO - Time taken to calculate hallucination scores for lbhd: 7.9648377895355225 seconds
+2024-02-23 13:12:13,840 - root - INFO - Time taken to load datasets: 14.861027717590332 seconds
+2024-02-23 13:12:33,619 - root - INFO - Time taken to generate NQ Open answers: 19.70426321029663 seconds
+2024-02-23 13:12:44,939 - root - INFO - Time taken to generate XSUM answers: 11.31983995437622 seconds
+2024-02-23 13:13:13,632 - root - INFO - Time taken to calculate hallucination scores for fleek: 28.67751431465149 seconds
+2024-02-23 13:13:37,707 - root - INFO - Time taken to calculate hallucination scores for lm_v_lm: 24.074466228485107 seconds
+2024-02-23 13:13:40,259 - root - INFO - Time taken to calculate hallucination scores for lbhd: 2.5510802268981934 seconds
+2024-02-23 13:14:19,877 - root - INFO - Time taken to calculate hallucination scores for fleek: 39.617629528045654 seconds
+2024-02-23 13:14:55,287 - root - INFO - Time taken to calculate hallucination scores for lm_v_lm: 35.40852236747742 seconds
+2024-02-23 13:14:57,538 - root - INFO - Time taken to calculate hallucination scores for lbhd: 2.25075626373291 seconds
+2024-02-23 13:14:57,538 - root - INFO - Time taken to get hallucination scores: 132.59900617599487 seconds
+2024-02-23 13:15:08,161 - root - INFO - Time taken to generate NQ Open answers: 10.61552381515503 seconds
+2024-02-23 13:15:21,314 - root - INFO - Time taken to generate XSUM answers: 13.152989625930786 seconds
+2024-02-23 13:15:49,874 - root - INFO - Time taken to calculate hallucination scores for fleek: 28.533767223358154 seconds
+2024-02-23 13:16:12,178 - root - INFO - Time taken to calculate hallucination scores for lm_v_lm: 22.298205137252808 seconds
+2024-02-23 13:16:14,208 - root - INFO - Time taken to calculate hallucination scores for lbhd: 2.0305113792419434 seconds
+2024-02-23 13:16:49,390 - root - INFO - Time taken to calculate hallucination scores for fleek: 35.181402921676636 seconds
+2024-02-23 13:17:10,716 - root - INFO - Time taken to calculate hallucination scores for lm_v_lm: 21.310018062591553 seconds
+2024-02-23 13:17:13,297 - root - INFO - Time taken to calculate hallucination scores for lbhd: 2.580063819885254 seconds
+2024-02-23 13:17:13,297 - root - INFO - Time taken to get hallucination scores: 111.96776795387268 seconds
+2024-02-23 13:17:23,872 - root - INFO - Time taken to generate NQ Open answers: 10.563732385635376 seconds
+2024-02-23 13:17:34,610 - root - INFO - Time taken to generate XSUM answers: 10.73805284500122 seconds

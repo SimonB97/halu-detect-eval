@@ -5,6 +5,10 @@ import json
 from src.utils.utils import print_json
 from tavily import TavilyClient
 from ratelimit import limits, sleep_and_retry
+import logging
+
+# Set up logging
+logging.basicConfig(filename='app.log', filemode='w', format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
 
 # LLMs: 50 calls per second
 LLM_CALLS = 50
@@ -213,7 +217,11 @@ class FLEEK:
         )
         
         # Format the prompt to include the subject, predicate, and attributes of the extended triple
-        attributes_formatted = ", ".join([f"{attr['predicateAttribute']}: {attr['object']}" for attr in fact_details['attributes']])
+        try:
+            attributes_formatted = ", ".join([f"{attr['predicateAttribute']}: {attr['object']}" for attr in fact_details['attributes']])
+        except KeyError as e:
+            logging.error("An Error occurred while formatting the attributes of the extended triple.\n  fact_details:\n{fact_details}\n  error: {e}")
+            raise ValueError("An Error occurred while formatting the attributes of the extended triple. Please check the logs for more information.")
         prompt_template = (
             "Generate a question based on the extended fact:\n\nSubject: '{subject}'\nPredicate: '{predicate}'\nAttributes: {attributes}\n\n"
             "The question should be designed to elicit detailed information incorporating the context of the attributes and only that."

@@ -1,0 +1,62 @@
+prompt,answer,llm_answer
+"Summarize the following article in a single, short sentence:
+
+<article>
+The ex-Reading defender denied fraudulent trading charges relating to the Sodje Sports Foundation - a charity to raise money for Nigerian sport.
+Mr Sodje, 37, is jointly charged with elder brothers Efe, 44, Bright, 50 and Stephen, 42.
+Appearing at the Old Bailey earlier, all four denied the offence.
+The charge relates to offences which allegedly took place between 2008 and 2014.
+Sam, from Kent, Efe and Bright, of Greater Manchester, and Stephen, from Bexley, are due to stand trial in July.
+They were all released on bail.
+</article>",Former Premier League footballer Sam Sodje has appeared in court alongside three brothers accused of charity fraud.,"([' Former', ' Reading', ' def', 'ender', ' and', ' brothers', ' denied', ' fraud', 'ulent', ' trading', ' charges', ' against', ' the', ' S', 'od', 'je', ' Sports', ' Foundation', ',', ' to', ' stand', ' trial', ' in', ' July', '.', '</s>'], array([-0.00219968, -0.69711087, -0.69315254, -0.6947984 , -1.46446708,
+       -1.14764663, -0.79746386, -0.73665196, -0.70328445, -0.69412183,
+       -0.69314802, -0.69423401, -0.72577832, -0.69314718, -0.69314718,
+       -0.69314718, -0.69315481, -0.69317555, -0.69399488, -0.72410864,
+       -0.69369569, -0.69314778, -0.69314718, -0.6931498 , -0.69314718,
+       -0.69823364]), [0.997802735, 0.4980220795, 0.499997317791, 0.4991750717, 0.23120117, 0.31738281, 0.45046997, 0.47871399, 0.49495697, 0.49951291085, 0.4999995827675, 0.4994568825, 0.483947754, 0.5, 0.5, 0.5, 0.49999618530275, 0.4999858140945, 0.499576330185, 0.48475647, 0.499725818635, 0.499999701976775, 0.5, 0.4999986886978, 0.5, 0.4974632263], ' Former Reading defender and brothers denied fraudulent trading charges against the Sodje Sports Foundation, to stand trial in July.</s>')"
+"Summarize the following article in a single, short sentence:
+
+<article>
+Voges was forced to retire hurt on 86 after suffering the injury while batting during the County Championship draw with Somerset on 4 June.
+Middlesex hope to have the Australian back for their T20 Blast game against Hampshire at Lord's on 3 August.
+The 37-year-old has scored 230 runs in four first-class games this season at an average of 57.50.
+""Losing Adam is naturally a blow as he contributes significantly to everything we do,"" director of cricket Angus Fraser said.
+""His absence, however, does give opportunities to other players who are desperate to play in the first XI.
+""In the past we have coped well without an overseas player and I expect us to do so now.""
+Defending county champions Middlesex are sixth in the Division One table, having drawn all four of their matches this season.
+Voges retired from international cricket in February with a Test batting average of 61.87 from 31 innings, second only to Australian great Sir Donald Bradman's career average of 99.94 from 52 Tests.
+</article>",Middlesex batsman Adam Voges will be out until August after suffering a torn calf muscle in his right leg.,"([' M', 'idd', 'les', 'ex', ""'"", 's', ' Australian', ' b', 'ats', 'man', ' V', 'og', 'es', ',', ' injured', ' and', ' absent', ',', ' is', ' hoped', ' to', ' return', ' for', ' their', ' T', '2', '0', ' Bl', 'ast', ' game', ',', ' with', ' the', ' team', ' having', ' cop', 'ed', ' well', ' without', ' overseas', ' players', ' in', ' the', ' past', '.', '</s>'], array([-2.44179809e-04, -6.93147181e-01, -6.93147300e-01, -6.93147300e-01,
+       -1.35363056e+00, -6.93147181e-01, -7.23149043e-01, -6.93232776e-01,
+       -6.93147181e-01, -6.93147419e-01, -6.93286427e-01, -6.93147181e-01,
+       -6.93147181e-01, -1.69769295e+00, -8.49252895e-01, -8.40444768e-01,
+       -1.14151163e+00, -6.93147181e-01, -1.56900663e+00, -1.25386221e+00,
+       -6.93147181e-01, -6.93155168e-01, -6.93147300e-01, -1.53670850e+00,
+       -6.93166254e-01, -6.93147181e-01, -6.93147181e-01, -7.70792048e-01,
+       -6.93147419e-01, -6.96873444e-01, -6.93176745e-01, -1.10252619e+00,
+       -1.12220382e+00, -6.93215609e-01,             nan, -9.33310983e-01,
+       -6.93147181e-01, -7.22080416e-01, -6.93188905e-01, -7.34550448e-01,
+       -6.93147419e-01, -6.93180083e-01, -6.93164466e-01, -6.93147181e-01,
+       -6.93147181e-01, -6.93147181e-01]), [0.99975585, 0.5, 0.499999940395355, 0.499999940395355, 0.25830078, 0.5, 0.485221863, 0.499957203865, 0.5, 0.49999988079071, 0.499930381775, 0.5, 0.5, 0.18310547, 0.427734375, 0.431518555, 0.31933594, 0.5, 0.20825195000000002, 0.28540039, 0.5, 0.499996006489, 0.499999940395355, 0.2150879, 0.499990463257, 0.5, 0.5, 0.462646485, 0.49999988079071, 0.4981403351, 0.499985218048, 0.33203125, 0.325561525, 0.499965786935, -0.07666015000000004, 0.39324950999999997, 0.5, 0.4857406615, 0.499979138375, 0.47972106999999997, 0.49999988079071, 0.499983549118, 0.4999913573265, 0.5, 0.5, 0.5], "" Middlesex's Australian batsman Voges, injured and absent, is hoped to return for their T20 Blast game, with the team having coped well without overseas players in the past.</s>"")"
+"Summarize the following article in a single, short sentence:
+
+<article>
+Seven photographs taken in the Norfolk countryside by photographer Josh Olins will appear in the June edition.
+In her first sitting for a magazine, the duchess is seen looking relaxed and wearing casual clothes.
+The shoot was in collaboration with the National Portrait Gallery, where two images are being displayed in the Vogue 100: A Century of Style exhibition.
+The duchess, who has a keen interest in photography, has been patron of the National Portrait Gallery since 2012.
+Nicholas Cullinan, director of the National Portrait Gallery, said: ""Josh has captured the duchess exactly as she is - full of life, with a great sense of humour, thoughtful and intelligent, and in fact, very beautiful.""
+He said the images also encapsulated what Vogue had done over the past 100 years - ""to pair the best photographers with the great personalities of the day, in order to reflect broader shifts in culture and society"".
+Alexandra Shulman, editor-in-chief of British Vogue, said: ""To be able to publish a photographic shoot with the Duchess of Cambridge has been one of my greatest ambitions for the magazine.""
+The collaboration for the June edition had resulted in ""a true celebration of our centenary as well as a fitting tribute to a young woman whose interest in both photography and the countryside is well known"", she said.
+Other royal portraits to have featured in the fashion magazine include Diana, Princess of Wales - who graced the cover four times - and Princess Anne.
+The duchess is to visit the exhibition at the National Portrait Gallery on Wednesday, Kensington Palace said.
+</article>",The Duchess of Cambridge will feature on the cover of British Vogue to mark the magazine's centenary.,"([' The', ' Du', 'che', 'ss', ' of', ' Cambridge', ""'"", 's', ' first', ' magazine', ' shoot', ',', ' featuring', ' her', ' casual', ' and', ' hum', 'orous', ' side', ',', ' is', ' featured', ' in', ' British', ' V', 'ogue', ""'"", 's', ' June', ' edition', ',', ' celebr', 'ating', ' the', ' magazine', ""'"", 's', ' cent', 'en', 'ary', ' and', ' her', ' interest', ' in', ' photography', '.', '</s>'], array([-0.04621779, -0.6933284 , -0.69314718, -0.69314718, -0.69314718,
+       -0.69314718, -0.87103522, -0.69314718, -0.70178269, -0.69317281,
+       -2.11119024, -0.69315505, -1.16863457, -0.73020227, -0.77940422,
+       -0.72084035, -1.02304925, -0.69314718, -0.69343356, -0.69314718,
+       -0.85626947, -0.75287956, -0.69314718, -0.69938455, -0.6931473 ,
+       -0.69314718, -0.69314718, -0.69314718, -0.73926909, -1.04571506,
+       -0.84640307, -0.77131989, -0.69314718, -0.69330443, -0.70014103,
+       -0.69314718, -0.69314718, -0.69502195, -0.69324947, -0.6931473 ,
+       -0.69385124, -0.73620582, -1.3261294 , -0.69314718, -0.69314813,
+       -0.69866316, -0.69314718]), [0.954833985, 0.49990940094, 0.5, 0.5, 0.5, 0.5, 0.418518065, 0.5, 0.495700836, 0.4999871850015, 0.12109375, 0.4999960660935, 0.310791015, 0.4818115235, 0.4586792, 0.486343384, 0.35949707, 0.5, 0.49985682965, 0.5, 0.42474365000000003, 0.4710083, 0.5, 0.49689102175, 0.499999940395355, 0.5, 0.5, 0.5, 0.4774627685, 0.35144043, 0.42895508, 0.462402345, 0.5, 0.499921381475, 0.496515274, 0.5, 0.5, 0.4990634918, 0.499948859215, 0.499999940395355, 0.499648094175, 0.4789276125, 0.26550293, 0.5, 0.49999952316285, 0.49724960325, 0.5], "" The Duchess of Cambridge's first magazine shoot, featuring her casual and humorous side, is featured in British Vogue's June edition, celebrating the magazine's centenary and her interest in photography.</s>"")"
