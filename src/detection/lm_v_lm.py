@@ -102,7 +102,6 @@ class LMvLM:
         self.examiner_llm = examiner_llm
 
     def get_hallucination_score(self, response: tuple, variants: list[str] = None) -> dict:
-
         resp_text = response[-1]
         examiner = Examiner(resp_text, self.examiner_llm)
         examinee = Examinee(resp_text, self.examinee_llm)
