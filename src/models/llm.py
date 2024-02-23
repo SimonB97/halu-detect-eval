@@ -83,7 +83,7 @@ class TogetherAILlm(BaseLlm):
             response.raise_for_status()  # This will raise an HTTPError if the response contains an HTTP error status code
         except requests.exceptions.HTTPError as http_err:
             print(f"HTTP error occurred: {http_err}")
-        except requests.exceptions.RequestException as err:
+        except Exception as err:
             print(f"Other error occurred: {err}")
         except json.JSONDecodeError:
             print(f"Response could not be parsed as JSON: {response.text}")
