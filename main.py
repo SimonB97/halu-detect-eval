@@ -270,9 +270,9 @@ if __name__ == "__main__":
         # if new methods are added, make sure to add them to self.durations too
         tempatures = [1.0, 1.0, 1.0, 1.0, 1.0]  # temperature for each sample, detemrines the number of samples too
         detection_methods = [
+                    "fleek",
                     "selfcheck_nli",
                     "selfcheck_bert",
-                    "fleek",
                     "lm_v_lm", 
                     "lbhd", 
                 ]
@@ -280,7 +280,7 @@ if __name__ == "__main__":
         # Load LLMs
         DEBUG = False  # use to display api request details
         llms = {
-                "togetherai_2": TogetherAILlm(together_bearer_token, "mistralai/Mistral-7B-Instruct-v0.1", debug=DEBUG),
+                # "togetherai_2": TogetherAILlm(together_bearer_token, "mistralai/Mistral-7B-Instruct-v0.1", debug=DEBUG),
                 "togetherai": TogetherAILlm(together_bearer_token, "mistralai/Mixtral-8x7B-Instruct-v0.1", debug=DEBUG),
                 "openai": OpenAILlm(openai_api_key, "gpt-3.5-turbo", debug=DEBUG),
             }

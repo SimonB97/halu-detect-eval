@@ -5,6 +5,7 @@ import json
 from src.utils.utils import print_json
 from tavily import TavilyClient
 from ratelimit import limits, sleep_and_retry
+import time
 
 # LLMs: 50 calls per second
 LLM_CALLS = 50
@@ -298,15 +299,23 @@ class FLEEK:
         Returns:
             List[Dict[str, str]]: A list of dictionaries containing the URL and content of each search result snippet.
         """
-        check_search_limit()
-        client = TavilyClient(self.search_api_key)
-        try:
-            resp = client.search(query, search_depth, max_results=max_results)
-            context = [{"url": obj["url"], "content": obj["content"]} for obj in resp["results"]]
-            return context
-        except Exception as e:
-            print(f"An error occurred during web search: {e}")
-            return [{"ERROR": "An error occurred during web search {" + str(e) + "}"}]
+        MAX_RETRIES = 10
+        BASE_DELAY = 2  # Base delay in seconds
+        for attempt in range(MAX_RETRIES):
+            try:
+                check_search_limit()
+                client = TavilyClient(self.search_api_key)
+                resp = client.search(query, search_depth, max_results=max_results)
+                context = [{"url": obj["url"], "content": obj["content"]} for obj in resp["results"]]
+                return context
+            except Exception as e:
+                if attempt < MAX_RETRIES - 1:  # i.e. not the last attempt
+                    print(f"An error occurred during web search: {e}. Retrying...")
+                    time.sleep(BASE_DELAY * (attempt + 1))  # Increase delay with each retry
+                    continue
+                else:
+                    print(f"An error occurred during web search: {e}. No more retries.")
+                    return [{"ERROR": "An error occurred during web search {" + str(e) + "}"}]
 
 
     def verify_facts(self, facts: List[Dict], search_results: List[List[Dict[str, str]]]) -> List[str]:

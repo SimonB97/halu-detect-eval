@@ -13,7 +13,7 @@ class SelfCheck_NLI:
             sentences=[response],
             sampled_passages=samples,
         )
-        print(f"DEBUG: SelfCheck NLI scores: {scores} for response: {response} and samples: {samples}")
+        # print(f"DEBUG: SelfCheck NLI scores: {scores} for response: {response} and samples: {samples}")
         return {response: {"score": np.mean(scores)}}
     
 
@@ -27,5 +27,5 @@ class SelfCheck_BERT:
             sentences=[response],
             sampled_passages=samples,
         )
-        print(f"DEBUG: SelfCheck BERT scores: {scores} for response: {response} and samples: {samples}")
+        # print(f"DEBUG: SelfCheck BERT scores: {scores} for response: {response} and samples: {samples}")
         return {response: {"score": np.mean(scores)}}
