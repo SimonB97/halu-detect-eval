@@ -1,7 +1,6 @@
 
 import logging
 
-
 from src.detection import lbhd, lm_v_lm, fleek, selfcheck_gpt
 from src.models.llm import OpenAILlm, TogetherAILlm, BaseLlm
 from src.data.load_data import load_datasets, prepare_data
@@ -15,6 +14,7 @@ import multiprocessing
 import datetime
 import time
 import json
+import torch
 
 
 # 50 calls per second
@@ -155,6 +155,11 @@ class HallucinationDetection:
 
         for method in detection:
             print(f"Calculating hallucination scores for {method}...")
+            torch.cuda.empty_cache()
+            if method == "selfcheck_nli":
+                selfcheck_nli.load_model()
+            elif method == "selfcheck_bert":
+                selfcheck_bert.load_model()
 
             column_name = f"{method}_score"
             if column_name in data_with_scores.columns:
@@ -175,6 +180,7 @@ class HallucinationDetection:
                         score = 1 if score else 0  # convert boolean to int to indicate error with -1
                     if type(score) == str:
                         score = 1 if score == "Questionable" else 0
+                    data_with_scores.at[index, column_name] = score
                 except Exception as e:
                     logging.error(f"Error: {e}")
                     col_type = type(data_with_scores.at[index, column_name])
@@ -185,10 +191,14 @@ class HallucinationDetection:
                     else:
                         data_with_scores.at[index, column_name] = col_type(-1)
             
-                data_with_scores.at[index, column_name] = score
             
             logging.info(f"Time taken to calculate hallucination scores for {method}: {time.time() - start_time} seconds")
             self.durations["detection"][method].append(time.time() - start_time)
+            if method == "selfcheck_nli":
+                selfcheck_nli.unload_model()
+            elif method == "selfcheck_bert":
+                selfcheck_bert.unload_model()
+            torch.cuda.empty_cache()
 
         return data_with_scores
 
@@ -288,7 +298,7 @@ if __name__ == "__main__":
 
         # Load datasets
         start_time = time.time()
-        RANGE = 2   # minimum (RANGE * n_datasets * n_llms) requests made to web search API
+        RANGE = 80   # minimum (RANGE * n_datasets * n_llms) requests made to web search API
         datasets = load_datasets()
         prepared_data = prepare_data(datasets)
         nqopen = prepared_data["nqopen"].iloc[:RANGE]
@@ -334,7 +344,7 @@ if __name__ == "__main__":
                         print(f"Generating {llm_name} NQ Open answers...")
                         nqopen_llm_answers = detection.get_llm_answers(
                             data=nqopen,
-                            parallel=True,  # TODO: check if parallel processing is working
+                            parallel=False,  # TODO: check if parallel processing is working
                             temperature=0.0, 
                             logprobs=True,
                             pool=pool,
@@ -356,7 +366,7 @@ if __name__ == "__main__":
                         print(f"Generating {llm_name} XSUM answers...")
                         xsum_llm_answers = detection.get_llm_answers(
                             data=xsum,
-                            parallel=True,   # TODO: check if parallel processing is working
+                            parallel=False,   # TODO: check if parallel processing is working
                             temperature=0.0, 
                             logprobs=True,
                             pool=pool,
@@ -371,7 +381,7 @@ if __name__ == "__main__":
                             print(f"Getting additional samples for selfcheck_nli with temperature: {temp} (sample {i+1}/{len(tempatures)})...")
                             nqopen_samples = detection.get_llm_answers(
                                 data=nqopen,
-                                parallel=True,  # TODO: check if parallel processing is working
+                                parallel=False,  # TODO: check if parallel processing is working
                                 temperature=temp, 
                                 logprobs=False,
                                 pool=pool,
@@ -379,7 +389,7 @@ if __name__ == "__main__":
                             )
                             xsum_samples = detection.get_llm_answers(
                                 data=xsum,
-                                parallel=True,   # TODO: check if parallel processing is working
+                                parallel=False,   # TODO: check if parallel processing is working
                                 temperature=temp, 
                                 logprobs=False,
                                 pool=pool,
