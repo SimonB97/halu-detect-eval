@@ -290,7 +290,7 @@ if __name__ == "__main__":
         DEBUG = False  # use to display api request details
         llms = {
                 # "togetherai_2": TogetherAILlm(together_bearer_token, "mistralai/Mistral-7B-Instruct-v0.1", debug=DEBUG),
-                "togetherai": TogetherAILlm(together_bearer_token, "mistralai/Mixtral-8x7B-Instruct-v0.1", debug=DEBUG),
+                # "togetherai": TogetherAILlm(together_bearer_token, "mistralai/Mixtral-8x7B-Instruct-v0.1", debug=DEBUG),
                 "openai": OpenAILlm(openai_api_key, "gpt-3.5-turbo", debug=DEBUG),
             }
         # llm for ground truth label generation
