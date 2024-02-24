@@ -260,10 +260,8 @@ if __name__ == "__main__":
 
         # Load API keys
         together_bearer_token = os.getenv("TOGETHER_AUTH_BEARER_TOKEN")
-        print(f"TOGETHER_AUTH_BEARER_TOKEN: {together_bearer_token}")
         openai_api_key = os.getenv("OPENAI_API_KEY")
         tavily_api_key = os.getenv("TAVILY_API_KEY")  # needed for FLEEK web search
-        print(f"TAVILY_API_KEY: {tavily_api_key}")
         copilot_api_key = os.getenv("COPILOT_API_KEY")
 
         # Set up detection methods
