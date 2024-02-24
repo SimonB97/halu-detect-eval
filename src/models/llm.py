@@ -6,6 +6,7 @@ from abc import ABC, abstractmethod
 import numpy as np
 import json
 from ratelimit import limits, sleep_and_retry
+import time
 
 load_dotenv()
 
@@ -79,8 +80,15 @@ class TogetherAILlm(BaseLlm):
         if self.debug: print("DEBUG: TogetherAI request:"), print_json(payload)
         
         try:
-            response = requests.post(self.url, json=payload, headers=headers)
-            response.raise_for_status()  # This will raise an HTTPError if the response contains an HTTP error status code
+            for attempt in range(10):  # Retry up to 10 times
+                try:
+                    response = requests.post(self.url, json=payload, headers=headers, timeout=200)
+                    response.raise_for_status()  # This will raise an HTTPError if the response contains an HTTP error status code
+                    break  # If no error, break the retry loop
+                except (requests.exceptions.HTTPError, requests.exceptions.Timeout, Exception) as e:
+                    wait_time = 2 ** attempt  # Exponential backoff
+                    print(f"Error: {e}. Retrying in {wait_time} seconds...")
+                    time.sleep(wait_time)
         except requests.exceptions.HTTPError as http_err:
             print(f"HTTP error occurred: {http_err}")
         except Exception as err:
@@ -158,9 +166,15 @@ class OpenAILlm(BaseLlm):
         if self.debug: print("DEBUG: OpenAI request:"), print_json(payload)
         
         try:
-            response = requests.post(self.url, json=payload, headers=headers)
-            response.raise_for_status()  # This will raise an HTTPError if the response contains an HTTP error status code
-            response_json = response.json()
+            for attempt in range(10):  # Retry up to 10 times
+                try:
+                    response = requests.post(self.url, json=payload, headers=headers, timeout=200)
+                    response.raise_for_status()  # This will raise an HTTPError if the response contains an HTTP error status code
+                    break  # If no error, break the retry loop
+                except (requests.exceptions.HTTPError, requests.exceptions.Timeout, Exception) as e:
+                    wait_time = 2 ** attempt  # Exponential backoff
+                    print(f"Error: {e}. Retrying in {wait_time} seconds...")
+                    time.sleep(wait_time)
         except requests.exceptions.HTTPError as http_err:
             print(f"HTTP error occurred: {http_err}")
         except requests.exceptions.RequestException as err:

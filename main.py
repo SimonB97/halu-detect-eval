@@ -15,6 +15,7 @@ import datetime
 import time
 import json
 import torch
+import time
 
 
 # 50 calls per second
@@ -49,15 +50,35 @@ class HallucinationDetection:
 
     def get_llm_answers(self, pool, data: pd.DataFrame, system_message: str = None, examples: list[dict] = None, 
                         parallel: bool = False, logprobs: bool = False, temperature: float = 0.0):
+        def get_llm_response_with_retry(row, system_message=None, examples=None, logprobs=False, temperature=0.0):
+            attempts = 0
+            wait_times = [5, 10, 30, 60, 180]  # Wait times in seconds: 5s, 10s, 30s, 1m, 3m
+            while attempts < 5:
+                try:
+                    start_time = time.time()
+                    response =  self.get_llm_response(row, system_message, examples, logprobs, temperature)
+                    end_time = time.time()
+                    if end_time - start_time > 200:
+                        raise TimeoutError("LLM call exceeded 200 seconds.")
+                    return response
+                except (TimeoutError, Exception) as e:
+                    attempts += 1
+                    if attempts < 5:
+                        print(f"Retrying due to error: {str(e)}. Attempt {attempts}/5. Waiting {wait_times[attempts-1]} seconds before retrying.")
+                        time.sleep(wait_times[attempts-1])
+                    else:
+                        print("Max retries reached. Moving to the next item.")
+                        return None
+
         if parallel:
             print(f"Getting LLM answers in parallel for {len(data)} requests...")
             with Pool() as pool:
-                llm_answers = pool.starmap(self.get_llm_response, [(row, system_message, examples, logprobs, temperature) for _, row in data.iterrows()])
+                llm_answers = pool.starmap(self.get_llm_response, [(row, system_message, examples, logprobs, temperature) for index, row in data.iterrows()])
         else:
             print(f"Getting LLM answers sequentially for {len(data)} requests...")
             llm_answers = []
             for index, row in data.iterrows():
-                llm_answers.append(self.get_llm_response(row, system_message, examples, logprobs, temperature))
+                llm_answers.append(get_llm_response_with_retry(row, system_message, examples, logprobs, temperature))
         return llm_answers
 
 
@@ -287,7 +308,8 @@ if __name__ == "__main__":
         selfcheck_bert = selfcheck_gpt.SelfCheck_BERT() if "selfcheck_bert" in detection_methods else None
 
         # Load LLMs
-        DEBUG = False  # use to display api request details
+        PARALLEL = True  # use parallel processing for LLM calls
+        DEBUG = True  # use to display api request details
         llms = {
                 # "togetherai_2": TogetherAILlm(together_bearer_token, "mistralai/Mistral-7B-Instruct-v0.1", debug=DEBUG),
                 # "togetherai": TogetherAILlm(together_bearer_token, "mistralai/Mixtral-8x7B-Instruct-v0.1", debug=DEBUG),
@@ -344,7 +366,7 @@ if __name__ == "__main__":
                         print(f"Generating {llm_name} NQ Open answers...")
                         nqopen_llm_answers = detection.get_llm_answers(
                             data=nqopen,
-                            parallel=False,  # TODO: check if parallel processing is working
+                            parallel=PARALLEL,  # TODO: check if parallel processing is working
                             temperature=0.0, 
                             logprobs=True,
                             pool=pool,
@@ -366,7 +388,7 @@ if __name__ == "__main__":
                         print(f"Generating {llm_name} XSUM answers...")
                         xsum_llm_answers = detection.get_llm_answers(
                             data=xsum,
-                            parallel=False,   # TODO: check if parallel processing is working
+                            parallel=PARALLEL,   # TODO: check if parallel processing is working
                             temperature=0.0, 
                             logprobs=True,
                             pool=pool,
@@ -375,28 +397,45 @@ if __name__ == "__main__":
                         xsum_answers = detection.create_answers_df(xsum, xsum_llm_answers)
                         logging.info(f"Time taken to generate XSUM answers: {time.time() - start_time} seconds")
                     
-                    # Add Samples for selfcheck gpt
-                    if "selfcheck_nli" or "selfcheck_bert" in detection_methods:
+                        # Get additional samples for selfcheck_gpt methods
                         for i, temp in enumerate(tempatures):
-                            print(f"Getting additional samples for selfcheck_nli with temperature: {temp} (sample {i+1}/{len(tempatures)})...")
-                            nqopen_samples = detection.get_llm_answers(
-                                data=nqopen,
-                                parallel=False,  # TODO: check if parallel processing is working
-                                temperature=temp, 
-                                logprobs=False,
-                                pool=pool,
-                                **detection.get_NQopen_messages()
-                            )
-                            xsum_samples = detection.get_llm_answers(
-                                data=xsum,
-                                parallel=False,   # TODO: check if parallel processing is working
-                                temperature=temp, 
-                                logprobs=False,
-                                pool=pool,
-                                **detection.get_XSUM_messages()
-                            )
-                            nqopen_answers = detection.create_answers_df(nqopen_answers, nqopen_samples)
-                            xsum_answers = detection.create_answers_df(xsum_answers, xsum_samples)
+                            print(f"Getting additional samples for selfcheck gpt with temperature: {temp} (sample {i+1}/{len(tempatures)})...")
+                            
+                            for attempt in range(10):  # Retry up to 10 times for nqopen_samples
+                                try:
+                                    nqopen_samples = detection.get_llm_answers(
+                                        data=nqopen,
+                                        parallel=PARALLEL,  # TODO: check if parallel processing is working
+                                        temperature=temp, 
+                                        logprobs=False,
+                                        pool=pool,
+                                        **detection.get_NQopen_messages()
+                                    )
+                                    nqopen_answers = detection.create_answers_df(nqopen_answers, nqopen_samples)
+                                    break  # If no error, break the retry loop
+                                except Exception as e:
+                                    wait_time = 2 ** attempt  # Exponential backoff
+                                    print(f"Error: {e}. Retrying in {wait_time} seconds...")
+                                    time.sleep(wait_time)
+                            
+                            for attempt in range(10):  # Retry up to 10 times for xsum_samples
+                                try:
+                                    xsum_samples = detection.get_llm_answers(
+                                        data=xsum,
+                                        parallel=PARALLEL,   # TODO: check if parallel processing is working
+                                        temperature=temp, 
+                                        logprobs=False,
+                                        pool=pool,
+                                        **detection.get_XSUM_messages()
+                                    )
+                                    xsum_answers = detection.create_answers_df(xsum_answers, xsum_samples)
+                                    break  # If no error, break the retry loop
+                                except Exception as e:
+                                    wait_time = 2 ** attempt  # Exponential backoff
+                                    print(f"Error: {e}. Retrying in {wait_time} seconds...")
+                                    time.sleep(wait_time)
+
+                            time.sleep(10)  # wait 5 seconds before getting the next sample
 
                     # Save answers
                     for dataset, path in answers_paths.items():
@@ -460,9 +499,6 @@ if __name__ == "__main__":
                     # save the avg times in csv
                     avg_times = pd.DataFrame.from_dict(detection.durations["detection"])
                     avg_times.to_csv(f"results/{llm_name}_durations.csv", index=False)
-
-                # Run Evaluation
-                
                 
             logging.shutdown()
 
