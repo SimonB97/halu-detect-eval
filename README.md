@@ -6,8 +6,8 @@
 
 - **LBHD** (Logit-based Hallucination Detection):
     - using "Instructing the Model" method to identify key concepts (for now), as no extra tool needed
-    - not clear how the authors aggregated concept scores into sentence scores -> using same strategy for aggregation to sentence scores as for concept scores
     - using same llm for concept extraction as for response generation, to simulate real-world scenario
+    - concept-level scores: aggregating the aggregated scores of concept tokens instead of all concept tokens in a sentence at once ( -> e.g. avg(avg(concept.tokens) for concept in sentence_concepts))
 
 - **LM sv LM**:
     - prompts and inspiration from [github.com/maybenotime/PHD/LMvsLM_replicate](https://github.com/maybenotime/PHD/tree/main/LMvsLM_replicate)

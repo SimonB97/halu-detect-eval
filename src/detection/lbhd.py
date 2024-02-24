@@ -78,9 +78,22 @@ class LBHD:
         return scores
 
     def normalized_product(self, probabilities):
-        adjusted_probs = [max(p, 1e-30) for p in probabilities.values()]
+        """
+        Calculate the normalized product of probabilities.
+
+        This method adjusts probabilities to avoid log(0) errors, computes the logarithm of each,
+        then calculates the exponential of the average log probability to return the geometric mean.
+
+        Args:
+            probabilities (dict): A dictionary of probabilities.
+
+        Returns:
+            float: The normalized product score.
+        """
+        adjusted_probs = [max(prob, 1e-30) for prob in probabilities.values()]
         log_probs = np.log(adjusted_probs)
-        score = np.exp(np.sum(log_probs) / len(adjusted_probs))
+        normalized_log_sum = np.sum(log_probs) / len(adjusted_probs)
+        score = np.exp(normalized_log_sum)
         return score
 
 

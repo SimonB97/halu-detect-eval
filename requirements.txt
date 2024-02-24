@@ -9,3 +9,4 @@ ratelimit==2.2.1
 pandas==2.2.0
 ipykernel
 selfcheckgpt==0.1.6
+seaborn==0.13.2
