@@ -31,9 +31,11 @@ def check_limit():
 
 
 class HallucinationDetection:
-    def __init__(self, llm: BaseLlm, eval_llm: BaseLlm = None):
+    def __init__(self, llm: BaseLlm, eval_llm: BaseLlm = None, selfcheck_nli: selfcheck_gpt.SelfCheck_NLI = None, selfcheck_bert: selfcheck_gpt.SelfCheck_BERT = None):
         self.llm = llm
         self.eval_llm = eval_llm  # used to retrieve ground truth labels
+        self.selfcheck_nli = selfcheck_nli
+        self.selfcheck_bert = selfcheck_bert
         self.durations = {
             "detection": {
                 "lbhd": [],
@@ -128,7 +130,7 @@ class HallucinationDetection:
         print(f"Calculating hallucination scores for {len(data_with_answers)} answers * {len(detection)} detection methods...")
         data_with_scores = data_with_answers.copy()
 
-        def calculate_score(method, row):
+        def calculate_score(method, row, selfcheck_nli=None, selfcheck_bert=None):
             if method == "lbhd":
                 return lbhd.LBHD(self.llm).get_hallucination_score(response=row["llm_answer"])
             elif method == "lm_v_lm":
@@ -140,14 +142,14 @@ class HallucinationDetection:
                 for col in row.index:
                     if "llm_answer__" in col:
                         samples.append(row[col][-1])
-                scores = selfcheck_gpt.SelfCheck_NLI().get_hallucination_score(response=row["llm_answer"][-1], samples=samples)
+                scores = self.selfcheck_nli.get_hallucination_score(response=row["llm_answer"][-1], samples=samples)
                 return scores
             elif method == "selfcheck_bert":
                 samples = []
                 for col in row.index:
                     if "llm_answer__" in col:
                         samples.append(row[col][-1])
-                scores = selfcheck_gpt.SelfCheck_BERT().get_hallucination_score(response=row["llm_answer"][-1], samples=samples)
+                scores = self.selfcheck_bert.get_hallucination_score(response=row["llm_answer"][-1], samples=samples)
                 return scores
 
 
@@ -159,34 +161,31 @@ class HallucinationDetection:
                 column_name += f"_{datetime.datetime.now().strftime('%Y%m%d%H%M%S')}"
             data_with_scores[column_name] = {}
             start_time = time.time()
-            if parallel:
-                # TODO: fix parallel processing
-                with multiprocessing.Pool(processes=pool) as p:
-                    scores = p.starmap(calculate_score, [(method, row) for _, row in data_with_answers.iterrows()])
-                # print(f"DEBUG: get_hallucination_scores: scores: {scores}")
-                for index, score in zip(data_with_answers.index, scores):
-                    data_with_scores.at[index, column_name] = score
-            else:
-                # normal sequential processing
-                for index, row in data_with_answers.iterrows():
-                    try:
-                        score = calculate_score(method, row)
-                        score = list(score.items())[0][1]["score"]
-                        if type(score) == bool:
-                            score = 1 if score else 0  # convert boolean to int to indicate error with -1
-                        if type(score) == str:
-                            score = 1 if score == "Questionable" else 0
-                    except Exception as e:
-                        logging.error(f"Error: {e}")
-                        col_type = type(data_with_scores.at[index, column_name])
-                        if col_type == dict:
-                            data_with_scores.at[index, column_name] = {"error": e}
-                        elif col_type == int:
-                            data_with_scores.at[index, column_name] = -1
-                        else:
-                            data_with_scores.at[index, column_name] = col_type(-1)
-                
-                    data_with_scores.at[index, column_name] = score
+            
+            # normal sequential processing
+            for index, row in data_with_answers.iterrows():
+                try:
+                    score = calculate_score(
+                        method, 
+                        row, 
+                        selfcheck_nli if method == "selfcheck_nli" else None, selfcheck_bert if method == "selfcheck_bert" else None
+                    )
+                    score = list(score.items())[0][1]["score"]
+                    if type(score) == bool:
+                        score = 1 if score else 0  # convert boolean to int to indicate error with -1
+                    if type(score) == str:
+                        score = 1 if score == "Questionable" else 0
+                except Exception as e:
+                    logging.error(f"Error: {e}")
+                    col_type = type(data_with_scores.at[index, column_name])
+                    if col_type == dict:
+                        data_with_scores.at[index, column_name] = {"error": e}
+                    elif col_type == int:
+                        data_with_scores.at[index, column_name] = -1
+                    else:
+                        data_with_scores.at[index, column_name] = col_type(-1)
+            
+                data_with_scores.at[index, column_name] = score
             
             logging.info(f"Time taken to calculate hallucination scores for {method}: {time.time() - start_time} seconds")
             self.durations["detection"][method].append(time.time() - start_time)
@@ -266,7 +265,7 @@ if __name__ == "__main__":
 
         # Set up detection methods
         # if new methods are added, make sure to add them to self.durations too
-        tempatures = [1.0, 1.0, 1.0, 1.0, 1.0]  # temperature for each sample, detemrines the number of samples too
+        tempatures = [1.0, 1.0, 1.0, 1.0, 1.0]  # temperature for each sample, detemrines the number of samples too (for SelfCheckGPT)
         detection_methods = [
                     "fleek",
                     "selfcheck_nli",
@@ -274,6 +273,8 @@ if __name__ == "__main__":
                     "lm_v_lm", 
                     "lbhd", 
                 ]
+        selfcheck_nli = selfcheck_gpt.SelfCheck_NLI() if "selfcheck_nli" in detection_methods else None
+        selfcheck_bert = selfcheck_gpt.SelfCheck_BERT() if "selfcheck_bert" in detection_methods else None
 
         # Load LLMs
         DEBUG = False  # use to display api request details
@@ -282,11 +283,12 @@ if __name__ == "__main__":
                 "togetherai": TogetherAILlm(together_bearer_token, "mistralai/Mixtral-8x7B-Instruct-v0.1", debug=DEBUG),
                 "openai": OpenAILlm(openai_api_key, "gpt-3.5-turbo", debug=DEBUG),
             }
+        # llm for ground truth label generation
         eval_llm = OpenAILlm(copilot_api_key, "gpt-4", "http://192.168.2.109:8080/v1/chat/completions")  # use regular OpenAI API or custom endpoint
 
         # Load datasets
         start_time = time.time()
-        RANGE = 80   # minimum (RANGE * n_datasets * n_llms) requests made to web search API
+        RANGE = 2   # minimum (RANGE * n_datasets * n_llms) requests made to web search API
         datasets = load_datasets()
         prepared_data = prepare_data(datasets)
         nqopen = prepared_data["nqopen"].iloc[:RANGE]
@@ -300,7 +302,7 @@ if __name__ == "__main__":
             for llm_name, llm in llms.items():
                 print(f"\n--------\nProcessing LLM: {llm.model}...\n")
                 
-                detection = HallucinationDetection(llm, eval_llm)
+                detection = HallucinationDetection(llm, eval_llm, selfcheck_nli, selfcheck_bert)
 
                 ground_truths_paths = {
                     "nqopen": f"{llm_name}_nqopen_with_ground_truths__{llm.model}".replace("/", "_").replace("\\", "_").replace(".", "-") + ".csv",
