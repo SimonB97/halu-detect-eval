@@ -151,7 +151,7 @@ class HallucinationDetection:
         print(f"Calculating hallucination scores for {len(data_with_answers)} answers * {len(detection)} detection methods...")
         data_with_scores = data_with_answers.copy()
 
-        def calculate_score(method, row, selfcheck_nli=None, selfcheck_bert=None):
+        def calculate_score(method):
             if method == "lbhd":
                 return lbhd.LBHD(self.llm).get_hallucination_score(response=row["llm_answer"])
             elif method == "lm_v_lm":
