@@ -7,6 +7,7 @@ import numpy as np
 import json
 from ratelimit import limits, sleep_and_retry
 import time
+from openai import OpenAI
 
 load_dotenv()
 
@@ -120,8 +121,9 @@ class TogetherAILlm(BaseLlm):
 
 
 class OpenAILlm(BaseLlm):
-    def __init__(self, bearer_token: str, model: str, url: str = None, debug: bool = False):
+    def __init__(self, bearer_token: str, model: str, url: str = None, debug: bool = False, use_sdk: bool = False):
         super().__init__(bearer_token, model, url if url else "https://api.openai.com/v1/chat/completions", debug)
+        self.use_sdk = use_sdk
 
     def get_response(self, message: str | list[dict], system_message: str = None, max_tokens: int = 512,
                      temperature: float = 0.0, top_p: float = 1, repetition_penalty: float = 1, 
@@ -142,62 +144,95 @@ class OpenAILlm(BaseLlm):
                                 {"role": "system", "content": system_message}
                 )
 
-        payload = {
-            "model": self.model,
-            "max_tokens": max_tokens,
-            "stop": "</s>",
-            "temperature": temperature,
-            "top_p": top_p,
-            "frequency_penalty": repetition_penalty,
-            "n": n,
-            "logprobs": return_logprobs,
-            "messages": messages
-        }
-        if return_logprobs:
-            payload["top_logprobs"] = 1
-        if json_mode:
-            payload["response_format"] = { "type": "json_object"}
-
-        headers = {
-            # "accept": "application/json",
-            "Content-Type": "application/json",
-            "Authorization": "Bearer " + self.bearer_token
-        }
-        if self.debug: print("DEBUG: OpenAI request:"), print_json(payload)
-        
-        try:
-            for attempt in range(10):  # Retry up to 10 times
-                try:
-                    response = requests.post(self.url, json=payload, headers=headers, timeout=200)
-                    response.raise_for_status()  # This will raise an HTTPError if the response contains an HTTP error status code
-                    break  # If no error, break the retry loop
-                except (requests.exceptions.HTTPError, requests.exceptions.Timeout, Exception) as e:
-                    wait_time = 2 ** attempt  # Exponential backoff
-                    print(f"Error: {e}. Retrying in {wait_time} seconds...")
-                    time.sleep(wait_time)
-        except requests.exceptions.HTTPError as http_err:
-            print(f"HTTP error occurred: {http_err}")
-        except requests.exceptions.RequestException as err:
-            print(f"Other error occurred: {err}")
-        except json.JSONDecodeError:
-            print(f"Response could not be parsed as JSON: {response.text}")
-        if self.debug: print("DEBUG: OpenAI response:"), print_json(response.json())
-
-        try:
+        if not self.use_sdk:
+            print("Using OpenAI API directly")
+            payload = {
+                "model": self.model,
+                "max_tokens": max_tokens,
+                "stop": "</s>",
+                "temperature": temperature,
+                "top_p": top_p,
+                "frequency_penalty": repetition_penalty,
+                "n": n,
+                "logprobs": return_logprobs,
+                "messages": messages
+            }
             if return_logprobs:
-                contents = response.json()["choices"][0]["logprobs"]["content"]
-                tokens, logprobs = zip(*((content["token"], np.float64(content["logprob"])) for content in contents))
-                tokens = list(tokens)
-                logprobs = list(logprobs)
-                linear_probabilities = [np.float64(np.exp(logprob)) for logprob in logprobs]
-                full_text = ("".join(tokens))
-            else:
-                full_text = response.json()["choices"][0]["message"]["content"]
-                tokens = None
-                logprobs = None
-                linear_probabilities = None
-        except KeyError:
-            print(f"Error in response: {response.json()}")
-            raise KeyError
+                payload["top_logprobs"] = 1
+            if json_mode:
+                payload["response_format"] = { "type": "json_object"}
+
+            headers = {
+                # "accept": "application/json",
+                "Content-Type": "application/json",
+                "Authorization": "Bearer " + self.bearer_token
+            }
+            if self.debug: print("DEBUG: OpenAI request:"), print_json(payload)
+            try:
+                for attempt in range(10):  # Retry up to 10 times
+                    try:
+                        response = requests.post(self.url, json=payload, headers=headers, timeout=200)
+                        response.raise_for_status()  # This will raise an HTTPError if the response contains an HTTP error status code
+                        break  # If no error, break the retry loop
+                    except (requests.exceptions.HTTPError, requests.exceptions.Timeout, Exception) as e:
+                        wait_time = 2 ** attempt  # Exponential backoff
+                        print(f"Error: {e}. Retrying in {wait_time} seconds...")
+                        time.sleep(wait_time)
+            except requests.exceptions.HTTPError as http_err:
+                print(f"HTTP error occurred: {http_err}")
+            except requests.exceptions.RequestException as err:
+                print(f"Other error occurred: {err}")
+            except json.JSONDecodeError:
+                print(f"Response could not be parsed as JSON: {response.text}")
+            if self.debug: print("DEBUG: OpenAI response:"), print_json(response.json())
+            try:
+                if return_logprobs:
+                    contents = response.json()["choices"][0]["logprobs"]["content"]
+                    tokens, logprobs = zip(*((content["token"], np.float64(content["logprob"])) for content in contents))
+                    tokens = list(tokens)
+                    logprobs = list(logprobs)
+                    linear_probabilities = [np.float64(np.exp(logprob)) for logprob in logprobs]
+                    full_text = ("".join(tokens))
+                else:
+                    full_text = response.json()["choices"][0]["message"]["content"]
+                    tokens = None
+                    logprobs = None
+                    linear_probabilities = None
+            except KeyError:
+                print(f"Error in response: {response.json()}")
+                raise KeyError
+        else:
+            print("Using OpenAI SDK")
+            self.url = self.url.split("chat/")[0] 
+            client = OpenAI(api_key=self.bearer_token, base_url=self.url)
+            try:
+                response = client.chat.completions.create(
+                    model=self.model,
+                    messages=messages,
+                    max_tokens=max_tokens,
+                    temperature=temperature,
+                    top_p=top_p,
+                    frequency_penalty=repetition_penalty,
+                    n=n,
+                    logprobs=return_logprobs
+                )
+
+                if return_logprobs:
+                    contents = response.choices[0].logprobs.content
+                    tokens, logprobs = zip(*((content.token, np.float64(content.logprob)) for content in contents))
+                    tokens = list(tokens)
+                    logprobs = list(logprobs)
+                    linear_probabilities = [np.float64(np.exp(logprob)) for logprob in logprobs]
+                    full_text = ("".join(tokens))
+                else:
+                    full_text = response.choices[0].message.content
+                    tokens = None
+                    logprobs = None
+                    linear_probabilities = None
+            except Exception as e:
+                print(f"Error: {e}")
+                raise e
+        
+
 
         return tokens, logprobs, linear_probabilities, full_text
