@@ -1,7 +1,7 @@
 
 # Evaluation of Hallucination Detection Methods for LLMs
 
-Implementation and evaluation framework for detecting hallucinations in Large Language Models.
+Implementation and evaluation of methods for detecting hallucinations in Large Language Models.
 
 ## Methods Overview
 
