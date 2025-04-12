@@ -14,15 +14,6 @@ Implementation and evaluation framework for detecting hallucinations in Large La
 
 ## Implementation Details
 
-### Rate Limits & Optimization
-
-| Component | Limit | Retry Strategy |
-|-----------|-------|----------------|
-| LLM APIs | 50 calls/sec | Exponential backoff (5s → 3m) |
-| Web Search | 10 calls/min | Exponential backoff (5s → 3m) |
-| Memory | Auto-clear | GPU cache cleared between runs |
-| Processing | Parallel option | Multi-process LLM inference |
-
 ### Method-Specific Modifications
 
 | Method | Modification | Rationale |
